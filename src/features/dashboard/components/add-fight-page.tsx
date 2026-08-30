@@ -1,0 +1,288 @@
+"use client";
+
+import type { FormEvent, ReactNode } from "react";
+import Link from "next/link";
+import { startTransition, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useToast } from "@/providers/toast-provider";
+
+export function AddFightPage({
+  eventSlug,
+  eventId,
+}: {
+  eventSlug: string;
+  eventId?: string;
+}) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSaving(true);
+    setFormError(null);
+
+    const formData = new FormData(event.currentTarget);
+
+    if (!eventId) {
+      window.setTimeout(() => {
+        showToast({
+          title: "Fight added successfully.",
+          variant: "success",
+        });
+
+        startTransition(() => {
+          router.push(`/dashboard/promoter/events/${eventSlug}`);
+        });
+
+        setIsSaving(false);
+      }, 300);
+
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/events/${eventId}/fights`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          division: String(formData.get("division") ?? ""),
+          fighterA: {
+            fullName: String(formData.get("fighterA.fullName") ?? ""),
+            managerName: String(formData.get("fighterA.managerName") ?? ""),
+            managerEmail: String(formData.get("fighterA.managerEmail") ?? ""),
+            managerPhone: String(formData.get("fighterA.managerPhone") ?? ""),
+            division: String(formData.get("fighterA.division") ?? ""),
+            notes: String(formData.get("fighterA.notes") ?? ""),
+          },
+          fighterB: {
+            fullName: String(formData.get("fighterB.fullName") ?? ""),
+            managerName: String(formData.get("fighterB.managerName") ?? ""),
+            managerEmail: String(formData.get("fighterB.managerEmail") ?? ""),
+            managerPhone: String(formData.get("fighterB.managerPhone") ?? ""),
+            division: String(formData.get("fighterB.division") ?? ""),
+            notes: String(formData.get("fighterB.notes") ?? ""),
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message ?? "Unable to create fight.");
+      }
+
+      showToast({
+        title: "Fight added successfully.",
+        variant: "success",
+      });
+
+      startTransition(() => {
+        router.push(`/dashboard/promoter/events/${eventSlug}`);
+        router.refresh();
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to create fight.";
+      setFormError(message);
+      showToast({
+        title: message,
+        variant: "error",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <main className="space-y-5">
+      <Link
+        href={`/dashboard/promoter/events/${eventSlug}`}
+        className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        <span>Back</span>
+      </Link>
+
+      <div className="space-y-1">
+        <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
+          Add Fight
+        </h1>
+        <p className="text-lg text-text-body">
+          Both fighters share the same bout. Contact info is required for the secure link.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-2">
+        {formError ? (
+          <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger xl:col-span-2">
+            {formError}
+          </div>
+        ) : null}
+
+        <div className="xl:col-span-2">
+          <FormField label="Fight division">
+            <input
+              name="division"
+              type="text"
+              placeholder="e.g. Lightweight"
+              className={inputClassName}
+              required
+            />
+          </FormField>
+        </div>
+
+        <FighterFormCard title="Fighter A" prefix="fighterA" />
+        <FighterFormCard title="Fighter B" prefix="fighterB" />
+
+        <div className="flex justify-end gap-3 xl:col-span-2">
+          <Link
+            href={`/dashboard/promoter/events/${eventSlug}`}
+            className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+          >
+            Cancel
+          </Link>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : "Save fight"}
+          </button>
+        </div>
+      </form>
+    </main>
+  );
+}
+
+function FighterFormCard({
+  title,
+  prefix,
+}: {
+  title: string;
+  prefix: "fighterA" | "fighterB";
+}) {
+  return (
+    <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <div className="mb-5 flex flex-col items-center gap-3">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-border-strong bg-panel-muted text-text-muted">
+          <UploadIcon className="h-5 w-5" />
+        </div>
+        <h2 className="text-[18px] font-semibold text-text-strong">{title}</h2>
+      </div>
+
+      <div className="space-y-4">
+        <FormField label="Fighter name">
+          <input
+            name={`${prefix}.fullName`}
+            type="text"
+            placeholder="Full name"
+            className={inputClassName}
+            required
+          />
+        </FormField>
+        <FormField label="Manager / contact name">
+          <input
+            name={`${prefix}.managerName`}
+            type="text"
+            placeholder="Manager name"
+            className={inputClassName}
+            required
+          />
+        </FormField>
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField label="Contact email">
+            <input
+              name={`${prefix}.managerEmail`}
+              type="email"
+              placeholder="email@example.com"
+              className={inputClassName}
+              required
+            />
+          </FormField>
+          <FormField label="Phone (optional)">
+            <input
+              name={`${prefix}.managerPhone`}
+              type="text"
+              placeholder="+1 ..."
+              className={inputClassName}
+            />
+          </FormField>
+        </div>
+        <FormField label="Weight class (optional)">
+          <input
+            name={`${prefix}.division`}
+            type="text"
+            placeholder="e.g. Lightweight"
+            className={inputClassName}
+          />
+        </FormField>
+        <FormField label="Notes (optional)">
+          <textarea name={`${prefix}.notes`} rows={4} className={textareaClassName} />
+        </FormField>
+      </div>
+    </section>
+  );
+}
+
+const inputClassName =
+  "h-11 w-full rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+
+const textareaClassName =
+  "w-full rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-2">
+      <span className="text-[15px] font-semibold text-text-strong">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ArrowLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m15 18-6-6 6-6" />
+      <path d="M9 12h11" />
+    </svg>
+  );
+}
+
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 16V6" />
+      <path d="m8 10 4-4 4 4" />
+      <path d="M5 18h14" />
+    </svg>
+  );
+}
