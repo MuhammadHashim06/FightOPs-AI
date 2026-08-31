@@ -15,7 +15,10 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     required: true,
     priority: "critical",
     dueDaysBeforeEvent: 5,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 3,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [3],
     reminderSubject: "Passport or ID required",
     reminderMessage:
@@ -31,7 +34,10 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     required: true,
     priority: "critical",
     dueDaysBeforeEvent: 7,
+    dueAnchor: "before_event",
+    dueOffsetDays: 7,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [5],
     reminderSubject: "Medical clearance required",
     reminderMessage:
@@ -47,7 +53,10 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     required: true,
     priority: "high",
     dueDaysBeforeEvent: 5,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 5,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [3],
     reminderSubject: "Insurance certificate required",
     reminderMessage:
@@ -62,9 +71,12 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     inputType: "document",
     required: true,
     priority: "critical",
-    dueDaysBeforeEvent: 3,
+    dueDaysBeforeEvent: undefined,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 5,
     reminderEnabled: true,
-    reminderDaysBeforeDue: [2],
+    reminderCadence: "daily_until_resolved",
+    reminderDaysBeforeDue: [5],
     reminderSubject: "Signed agreement required",
     reminderMessage:
       "Please upload the signed agreement before final bout approval.",
@@ -80,7 +92,10 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     required: true,
     priority: "high",
     dueDaysBeforeEvent: 1,
+    dueAnchor: "before_event",
+    dueOffsetDays: 1,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [1],
     reminderSubject: "Weight confirmation needed",
     reminderMessage:
@@ -95,8 +110,11 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     inputType: "text",
     required: true,
     priority: "medium",
-    dueDaysBeforeEvent: 4,
+    dueDaysBeforeEvent: undefined,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 3,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [2],
     reminderSubject: "Travel details needed",
     reminderMessage:
@@ -169,8 +187,11 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     inputType: "text",
     required: true,
     priority: "medium",
-    dueDaysBeforeEvent: 6,
+    dueDaysBeforeEvent: undefined,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 2,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [3],
     reminderSubject: "Fighter information required",
     reminderMessage:
@@ -215,8 +236,11 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     inputType: "document",
     required: true,
     priority: "medium",
-    dueDaysBeforeEvent: 5,
+    dueDaysBeforeEvent: undefined,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 4,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [2],
     reminderSubject: "Photo and media assets required",
     reminderMessage:
@@ -233,7 +257,10 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     required: false,
     priority: "high",
     dueDaysBeforeEvent: 10,
+    dueAnchor: "before_event",
+    dueOffsetDays: 10,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [5],
     reminderSubject: "Bloodwork results requested",
     reminderMessage:
@@ -249,8 +276,11 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     inputType: "text",
     required: true,
     priority: "medium",
-    dueDaysBeforeEvent: 4,
+    dueDaysBeforeEvent: undefined,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 2,
     reminderEnabled: true,
+    reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [2],
     reminderSubject: "Emergency contact details needed",
     reminderMessage:
@@ -289,6 +319,53 @@ const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
   },
 ];
 
+const workflowTimelineUpgrades: Record<
+  string,
+  {
+    legacyDueDaysBeforeEvent: number | null;
+    dueAnchor: NonNullable<CreateRequirementTemplateInput["dueAnchor"]>;
+    dueOffsetDays: number;
+    reminderDaysBeforeDue?: number[];
+  }
+> = {
+  "Passport / ID": {
+    legacyDueDaysBeforeEvent: 5,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 3,
+  },
+  "Insurance Certificate": {
+    legacyDueDaysBeforeEvent: 5,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 5,
+  },
+  "Signed Agreement": {
+    legacyDueDaysBeforeEvent: 3,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 5,
+    reminderDaysBeforeDue: [5],
+  },
+  "Travel Details": {
+    legacyDueDaysBeforeEvent: 4,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 3,
+  },
+  "Fighter Information": {
+    legacyDueDaysBeforeEvent: 6,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 2,
+  },
+  "Photo / Media": {
+    legacyDueDaysBeforeEvent: 5,
+    dueAnchor: "after_signed_agreement_approved",
+    dueOffsetDays: 4,
+  },
+  "Emergency Contact": {
+    legacyDueDaysBeforeEvent: 4,
+    dueAnchor: "after_invite_accepted",
+    dueOffsetDays: 2,
+  },
+};
+
 export async function listRequirementTemplatesForUser(ownerUserId: string) {
   let templates = await requirementTemplatesRepository.listByOwnerUserId(ownerUserId);
 
@@ -301,6 +378,8 @@ export async function listRequirementTemplatesForUser(ownerUserId: string) {
     }
 
     templates = await requirementTemplatesRepository.listByOwnerUserId(ownerUserId);
+  } else {
+    templates = await upgradeLegacyDefaultTimelines(ownerUserId, templates);
   }
 
   return templates;
@@ -359,12 +438,22 @@ export async function applyRequirementTemplatesToEvent(params: {
       inputType: template.inputType,
       required: template.required,
       priority: template.priority,
-      dueDate: resolveDueDate(params.eventDate, template.dueDaysBeforeEvent) ?? undefined,
+      dueDate:
+        resolveDueDate({
+          eventDate: params.eventDate,
+          dueAnchor: template.dueAnchor,
+          dueOffsetDays: template.dueOffsetDays,
+          fallbackDueDaysBeforeEvent: template.dueDaysBeforeEvent,
+        }) ?? undefined,
+      dueAnchor: template.dueAnchor,
+      dueOffsetDays: template.dueOffsetDays ?? undefined,
       reminderEnabled: template.reminderEnabled,
+      reminderCadence: template.reminderCadence,
       reminderDaysBeforeDue: template.reminderDaysBeforeDue,
       reminderSubject: template.reminderSubject ?? undefined,
       reminderMessage: template.reminderMessage ?? undefined,
       structuredFields: template.structuredFields,
+      documentBlocks: template.documentBlocks,
       humanVerificationRequired: template.humanVerificationRequired,
       isSignedAgreement: template.isSignedAgreement,
       acceptedFileTypes: template.acceptedFileTypes,
@@ -388,6 +477,10 @@ function validateUpdateRequirementTemplateInput(input: UpdateRequirementTemplate
     throw new Error("Due days before event must be zero or greater.");
   }
 
+  if (typeof input.dueOffsetDays === "number" && input.dueOffsetDays < 0) {
+    throw new Error("Due offset days must be zero or greater.");
+  }
+
   if (
     Array.isArray(input.reminderDaysBeforeDue) &&
     input.reminderDaysBeforeDue.some((value) => value < 0)
@@ -400,17 +493,68 @@ function validateUpdateRequirementTemplateInput(input: UpdateRequirementTemplate
   }
 }
 
-function resolveDueDate(eventDate: string, dueDaysBeforeEvent: number | null) {
-  if (typeof dueDaysBeforeEvent !== "number") {
+async function upgradeLegacyDefaultTimelines(
+  ownerUserId: string,
+  templates: Awaited<ReturnType<typeof requirementTemplatesRepository.listByOwnerUserId>>,
+) {
+  let nextTemplates = templates;
+
+  for (const template of templates) {
+    const upgrade = workflowTimelineUpgrades[template.name];
+
+    if (!upgrade || template.dueAnchor !== "before_event") {
+      continue;
+    }
+
+    const currentOffset = template.dueOffsetDays ?? template.dueDaysBeforeEvent;
+
+    if (currentOffset !== upgrade.legacyDueDaysBeforeEvent) {
+      continue;
+    }
+
+    const updatedTemplate = await requirementTemplatesRepository.updateOwned(
+      ownerUserId,
+      template.id,
+      {
+        dueAnchor: upgrade.dueAnchor,
+        dueOffsetDays: upgrade.dueOffsetDays,
+        dueDaysBeforeEvent:
+          upgrade.dueAnchor === "before_event" ? upgrade.dueOffsetDays : undefined,
+        reminderDaysBeforeDue: upgrade.reminderDaysBeforeDue,
+      },
+    );
+
+    if (updatedTemplate) {
+      nextTemplates = nextTemplates.map((item) =>
+        item.id === updatedTemplate.id ? updatedTemplate : item,
+      );
+    }
+  }
+
+  return nextTemplates;
+}
+
+function resolveDueDate(params: {
+  eventDate: string;
+  dueAnchor: CreateRequirementTemplateInput["dueAnchor"];
+  dueOffsetDays: number | null;
+  fallbackDueDaysBeforeEvent: number | null;
+}) {
+  const offsetDays =
+    typeof params.dueOffsetDays === "number"
+      ? params.dueOffsetDays
+      : params.fallbackDueDaysBeforeEvent;
+
+  if ((params.dueAnchor ?? "before_event") !== "before_event" || typeof offsetDays !== "number") {
     return null;
   }
 
-  const dueDate = new Date(eventDate);
+  const dueDate = new Date(params.eventDate);
 
   if (Number.isNaN(dueDate.getTime())) {
     return null;
   }
 
-  dueDate.setUTCDate(dueDate.getUTCDate() - dueDaysBeforeEvent);
+  dueDate.setUTCDate(dueDate.getUTCDate() - offsetDays);
   return dueDate.toISOString();
 }

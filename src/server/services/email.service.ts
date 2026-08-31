@@ -25,6 +25,17 @@ type OperationalReminderEmailPayload = {
   dueDate: string | null;
 };
 
+type FighterInviteEmailPayload = {
+  email: string;
+  fighterName: string;
+  promoterName: string;
+  eventName: string;
+  eventDate: string;
+  division: string;
+  acceptUrl: string;
+  expiresInDays: number;
+};
+
 let transporter: nodemailer.Transporter | null = null;
 
 export async function sendVerificationEmail(payload: VerificationEmailPayload) {
@@ -102,6 +113,41 @@ export async function sendOperationalReminderEmail(
       <p><strong>Event:</strong> ${escapeHtml(payload.eventName)}</p>
       <p><strong>Requirement:</strong> ${escapeHtml(payload.requirementName)}</p>
       <p><strong>Due date:</strong> ${escapeHtml(dueDateLabel)}</p>
+    `,
+  });
+}
+
+export async function sendFighterInviteEmail(payload: FighterInviteEmailPayload) {
+  const transport = await getTransporter();
+
+  await transport.sendMail({
+    from: env.emailFrom,
+    to: payload.email,
+    subject: `You're invited to ${payload.eventName}`,
+    text: [
+      `Hi ${payload.fighterName || "there"},`,
+      "",
+      `${payload.promoterName} invited you to join ${payload.eventName}.`,
+      `Division: ${payload.division}`,
+      `Event date: ${payload.eventDate}`,
+      "",
+      "Use the link below to accept your invite and set your password:",
+      payload.acceptUrl,
+      "",
+      `This invite expires in ${payload.expiresInDays} day${
+        payload.expiresInDays === 1 ? "" : "s"
+      }.`,
+    ].join("\n"),
+    html: `
+      <p>Hi ${escapeHtml(payload.fighterName || "there")},</p>
+      <p><strong>${escapeHtml(payload.promoterName)}</strong> invited you to join <strong>${escapeHtml(payload.eventName)}</strong>.</p>
+      <p><strong>Division:</strong> ${escapeHtml(payload.division)}</p>
+      <p><strong>Event date:</strong> ${escapeHtml(payload.eventDate)}</p>
+      <p>Use the link below to accept your invite and set your password:</p>
+      <p><a href="${escapeHtml(payload.acceptUrl)}">${escapeHtml(payload.acceptUrl)}</a></p>
+      <p>This invite expires in ${payload.expiresInDays} day${
+        payload.expiresInDays === 1 ? "" : "s"
+      }.</p>
     `,
   });
 }

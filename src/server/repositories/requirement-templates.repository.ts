@@ -35,11 +35,20 @@ export const requirementTemplatesRepository = {
       priority: input.priority,
       dueDaysBeforeEvent:
         typeof input.dueDaysBeforeEvent === "number" ? input.dueDaysBeforeEvent : null,
+      dueAnchor: input.dueAnchor ?? "before_event",
+      dueOffsetDays:
+        typeof input.dueOffsetDays === "number"
+          ? input.dueOffsetDays
+          : typeof input.dueDaysBeforeEvent === "number"
+            ? input.dueDaysBeforeEvent
+            : null,
       reminderEnabled: input.reminderEnabled ?? false,
+      reminderCadence: input.reminderCadence ?? "daily_until_resolved",
       reminderDaysBeforeDue: input.reminderDaysBeforeDue ?? [],
       reminderSubject: normalizeOptionalText(input.reminderSubject),
       reminderMessage: normalizeOptionalText(input.reminderMessage),
       structuredFields: (input.structuredFields ?? []).map(mapStructuredFieldInput),
+      documentBlocks: normalizeDocumentBlocks(input),
       humanVerificationRequired: input.humanVerificationRequired ?? false,
       isSignedAgreement: input.isSignedAgreement ?? false,
       acceptedFileTypes: input.acceptedFileTypes ?? [],
@@ -83,8 +92,26 @@ export const requirementTemplatesRepository = {
         typeof input.dueDaysBeforeEvent === "number" ? input.dueDaysBeforeEvent : null;
     }
 
+    if (typeof input.dueAnchor === "string") {
+      updatePayload.dueAnchor = input.dueAnchor;
+    }
+
+    if (typeof input.dueOffsetDays !== "undefined") {
+      updatePayload.dueOffsetDays =
+        typeof input.dueOffsetDays === "number" ? input.dueOffsetDays : null;
+      updatePayload.dueDaysBeforeEvent =
+        input.dueAnchor === "before_event" && typeof input.dueOffsetDays === "number"
+          ? input.dueOffsetDays
+          : null;
+    }
+
     if (typeof input.reminderEnabled === "boolean") {
       updatePayload.reminderEnabled = input.reminderEnabled;
+    }
+
+    if (typeof input.reminderCadence === "string") {
+      updatePayload.reminderCadence = input.reminderCadence;
+      updatePayload.reminderEnabled = input.reminderCadence !== "off";
     }
 
     if (Array.isArray(input.reminderDaysBeforeDue)) {
@@ -101,6 +128,10 @@ export const requirementTemplatesRepository = {
 
     if (Array.isArray(input.structuredFields)) {
       updatePayload.structuredFields = input.structuredFields.map(mapStructuredFieldInput);
+    }
+
+    if (Array.isArray(input.documentBlocks)) {
+      updatePayload.documentBlocks = input.documentBlocks.map(mapDocumentBlockInput);
     }
 
     if (typeof input.humanVerificationRequired === "boolean") {
@@ -127,7 +158,7 @@ export const requirementTemplatesRepository = {
       templateId,
       updatePayload,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       },
     ).lean();
@@ -172,8 +203,26 @@ export const requirementTemplatesRepository = {
         typeof input.dueDaysBeforeEvent === "number" ? input.dueDaysBeforeEvent : null;
     }
 
+    if (typeof input.dueAnchor === "string") {
+      updatePayload.dueAnchor = input.dueAnchor;
+    }
+
+    if (typeof input.dueOffsetDays !== "undefined") {
+      updatePayload.dueOffsetDays =
+        typeof input.dueOffsetDays === "number" ? input.dueOffsetDays : null;
+      updatePayload.dueDaysBeforeEvent =
+        input.dueAnchor === "before_event" && typeof input.dueOffsetDays === "number"
+          ? input.dueOffsetDays
+          : null;
+    }
+
     if (typeof input.reminderEnabled === "boolean") {
       updatePayload.reminderEnabled = input.reminderEnabled;
+    }
+
+    if (typeof input.reminderCadence === "string") {
+      updatePayload.reminderCadence = input.reminderCadence;
+      updatePayload.reminderEnabled = input.reminderCadence !== "off";
     }
 
     if (Array.isArray(input.reminderDaysBeforeDue)) {
@@ -190,6 +239,10 @@ export const requirementTemplatesRepository = {
 
     if (Array.isArray(input.structuredFields)) {
       updatePayload.structuredFields = input.structuredFields.map(mapStructuredFieldInput);
+    }
+
+    if (Array.isArray(input.documentBlocks)) {
+      updatePayload.documentBlocks = input.documentBlocks.map(mapDocumentBlockInput);
     }
 
     if (typeof input.humanVerificationRequired === "boolean") {
@@ -220,7 +273,7 @@ export const requirementTemplatesRepository = {
       },
       updatePayload,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       },
     ).lean();
@@ -233,7 +286,7 @@ export const requirementTemplatesRepository = {
     const template = await RequirementTemplateMongoModel.findByIdAndUpdate(
       templateId,
       { isActive: false },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
 
     return Boolean(template);
@@ -248,7 +301,7 @@ export const requirementTemplatesRepository = {
         isActive: true,
       },
       { isActive: false },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
 
     return Boolean(template);
@@ -289,6 +342,48 @@ function mapStructuredFieldInput(field: {
   };
 }
 
+function normalizeDocumentBlocks(input: CreateRequirementTemplateInput) {
+  if (Array.isArray(input.documentBlocks) && input.documentBlocks.length > 0) {
+    return input.documentBlocks.map(mapDocumentBlockInput);
+  }
+
+  if (input.inputType !== "document") {
+    return [];
+  }
+
+  return [
+    {
+      key: slugify(input.name),
+      title: input.name.trim(),
+      description: normalizeOptionalText(input.description),
+      required: input.required,
+      acceptedFileTypes: input.acceptedFileTypes ?? [],
+      humanVerificationRequired: input.humanVerificationRequired ?? false,
+      sortOrder: 1,
+    },
+  ];
+}
+
+function mapDocumentBlockInput(block: RequirementTemplateRecord["documentBlocks"][number]) {
+  return {
+    key: block.key.trim(),
+    title: block.title.trim(),
+    description: normalizeOptionalText(block.description ?? undefined),
+    required: block.required,
+    acceptedFileTypes: block.acceptedFileTypes ?? [],
+    humanVerificationRequired: block.humanVerificationRequired,
+    sortOrder: block.sortOrder,
+  };
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function mapRequirementTemplate(template: {
   _id: { toString(): string };
   ownerUserId: { toString(): string };
@@ -299,7 +394,10 @@ function mapRequirementTemplate(template: {
   required: boolean;
   priority: RequirementTemplateRecord["priority"];
   dueDaysBeforeEvent: number | null;
+  dueAnchor?: RequirementTemplateRecord["dueAnchor"];
+  dueOffsetDays?: number | null;
   reminderEnabled: boolean;
+  reminderCadence?: RequirementTemplateRecord["reminderCadence"];
   reminderDaysBeforeDue: number[];
   reminderSubject: string | null;
   reminderMessage: string | null;
@@ -310,6 +408,7 @@ function mapRequirementTemplate(template: {
     required: boolean;
     placeholder: string | null;
   }>;
+  documentBlocks?: RequirementTemplateRecord["documentBlocks"];
   humanVerificationRequired: boolean;
   isSignedAgreement: boolean;
   acceptedFileTypes: string[];
@@ -328,7 +427,15 @@ function mapRequirementTemplate(template: {
     required: template.required,
     priority: template.priority,
     dueDaysBeforeEvent: template.dueDaysBeforeEvent ?? null,
+    dueAnchor: template.dueAnchor ?? "before_event",
+    dueOffsetDays:
+      typeof template.dueOffsetDays === "number"
+        ? template.dueOffsetDays
+        : template.dueDaysBeforeEvent ?? null,
     reminderEnabled: template.reminderEnabled,
+    reminderCadence:
+      template.reminderCadence ??
+      (template.reminderEnabled ? "daily_until_resolved" : "off"),
     reminderDaysBeforeDue: template.reminderDaysBeforeDue ?? [],
     reminderSubject: template.reminderSubject ?? null,
     reminderMessage: template.reminderMessage ?? null,
@@ -339,6 +446,7 @@ function mapRequirementTemplate(template: {
       required: field.required,
       placeholder: field.placeholder ?? null,
     })),
+    documentBlocks: normalizeMappedDocumentBlocks(template),
     humanVerificationRequired: template.humanVerificationRequired,
     isSignedAgreement: template.isSignedAgreement,
     acceptedFileTypes: template.acceptedFileTypes ?? [],
@@ -347,4 +455,44 @@ function mapRequirementTemplate(template: {
     createdAt: template.createdAt.toISOString(),
     updatedAt: template.updatedAt.toISOString(),
   } satisfies RequirementTemplateRecord;
+}
+
+function normalizeMappedDocumentBlocks(template: {
+  name: string;
+  description: string | null;
+  inputType: RequirementTemplateRecord["inputType"];
+  required: boolean;
+  acceptedFileTypes: string[];
+  humanVerificationRequired: boolean;
+  documentBlocks?: RequirementTemplateRecord["documentBlocks"];
+}) {
+  if (template.documentBlocks && template.documentBlocks.length > 0) {
+    return template.documentBlocks
+      .map((block) => ({
+        key: block.key,
+        title: block.title,
+        description: block.description ?? null,
+        required: block.required,
+        acceptedFileTypes: block.acceptedFileTypes ?? [],
+        humanVerificationRequired: block.humanVerificationRequired,
+        sortOrder: block.sortOrder,
+      }))
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
+  if (template.inputType !== "document") {
+    return [];
+  }
+
+  return [
+    {
+      key: slugify(template.name),
+      title: template.name,
+      description: template.description ?? null,
+      required: template.required,
+      acceptedFileTypes: template.acceptedFileTypes ?? [],
+      humanVerificationRequired: template.humanVerificationRequired,
+      sortOrder: 1,
+    },
+  ];
 }

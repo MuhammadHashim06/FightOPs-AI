@@ -4,10 +4,27 @@ import Link from "next/link";
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { editFightCardRows } from "@/features/dashboard/data/promoter-events";
 import { useToast } from "@/providers/toast-provider";
 
-export function EditFightCardPage({ eventSlug }: { eventSlug: string }) {
+type EditFightCardPageProps = {
+  eventSlug: string;
+  rows: Array<{
+    id: string;
+    order: string;
+    division: string;
+    leftFighter: {
+      name: string;
+    };
+    rightFighter: {
+      name: string;
+    };
+  }>;
+};
+
+export function EditFightCardPage({
+  eventSlug,
+  rows,
+}: EditFightCardPageProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
@@ -42,10 +59,10 @@ export function EditFightCardPage({ eventSlug }: { eventSlug: string }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
-            Edit Fight Card
+            Reorder Fight Card
           </h1>
           <p className="text-lg text-text-body">
-            Drag to reorder bouts. Order is saved explicitly.
+            Drag to reorder bouts. Fighter editing happens on each fight separately.
           </p>
         </div>
 
@@ -69,25 +86,23 @@ export function EditFightCardPage({ eventSlug }: { eventSlug: string }) {
       </div>
 
       <div className="space-y-3">
-        {editFightCardRows.map((row) => (
+        {rows.map((row) => (
           <article
-            key={row.order}
+            key={row.id}
             className="grid items-center gap-4 rounded-[16px] border border-border-subtle bg-panel px-4 py-4 shadow-[0_8px_20px_rgba(23,32,51,0.03)] lg:grid-cols-[auto_48px_1.2fr_1.2fr_auto_auto]"
           >
             <DragDots />
             <span className="text-[18px] font-semibold text-[#8ea0ba]">{row.order}</span>
             <div>
-              <p className="text-[18px] font-medium text-text-strong">{row.leftName}</p>
-              <p className="text-[15px] text-text-muted">{row.leftDivision}</p>
+              <p className="text-[18px] font-medium text-text-strong">{row.leftFighter.name}</p>
+              <p className="text-[15px] text-text-muted">{row.division}</p>
             </div>
             <div>
-              <p className="text-[18px] font-medium text-text-strong">{row.rightName}</p>
-              <p className="text-[15px] text-text-muted">{row.rightDivision}</p>
+              <p className="text-[18px] font-medium text-text-strong">{row.rightFighter.name}</p>
+              <p className="text-[15px] text-text-muted">{row.division}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {row.tags.map((tag) => (
-                <StatusPill key={tag.label} label={tag.label} tone={tag.tone} />
-              ))}
+              <StatusPill label={row.division} tone="processing" />
             </div>
             <button
               type="button"
@@ -98,6 +113,17 @@ export function EditFightCardPage({ eventSlug }: { eventSlug: string }) {
             </button>
           </article>
         ))}
+
+        {rows.length === 0 ? (
+          <section className="rounded-[16px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[0_8px_20px_rgba(23,32,51,0.03)]">
+            <p className="text-[20px] font-semibold text-text-strong">
+              No fights to reorder
+            </p>
+            <p className="mt-2 text-[15px] text-text-body">
+              Add fights to this event before changing the card order.
+            </p>
+          </section>
+        ) : null}
       </div>
     </main>
   );

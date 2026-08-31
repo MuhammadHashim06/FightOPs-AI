@@ -1,31 +1,16 @@
 import Link from "next/link";
 
-import { promoterEvents } from "@/features/dashboard/data/promoter-events";
-
-const defaultStats = [
-  { label: "Events", value: "3", hint: "across promotion" },
-  { label: "Fights", value: "16", hint: "on the card" },
-  { label: "Fighters", value: "32", hint: "12 ready" },
-  { label: "Waiting", value: "20", hint: "awaiting items", tone: "warning" },
-  {
-    label: "Human Action",
-    value: "0",
-    hint: "fights need review",
-    tone: "highlight",
-  },
-] as const;
+import type {
+  DashboardEventSummary,
+  DashboardOverviewStats,
+} from "@/server/services/events.service";
 
 export function PromoterOverview({
-  events = promoterEvents,
-  stats = defaultStats,
+  events,
+  stats = [],
 }: {
-  events?: typeof promoterEvents;
-  stats?: ReadonlyArray<{
-    label: string;
-    value: string;
-    hint: string;
-    tone?: "warning" | "highlight";
-  }>;
+  events: DashboardEventSummary[];
+  stats?: DashboardOverviewStats;
 }) {
   return (
     <main className="space-y-5">

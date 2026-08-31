@@ -1,14 +1,11 @@
 import Link from "next/link";
 
-import {
-  promoterEvents,
-  type PromoterEventStatus,
-} from "@/features/dashboard/data/promoter-events";
+import type { DashboardEventSummary } from "@/server/services/events.service";
 
 export function PromoterEventsPage({
-  events = promoterEvents,
+  events,
 }: {
-  events?: typeof promoterEvents;
+  events: DashboardEventSummary[];
 }) {
   return (
     <main className="space-y-5">
@@ -96,7 +93,7 @@ export function PromoterEventsPage({
   );
 }
 
-export function EventStatusBadge({ status }: { status: PromoterEventStatus }) {
+export function EventStatusBadge({ status }: { status: DashboardEventSummary["status"] }) {
   const styles =
     status === "active"
       ? "border-[#b7ead1] bg-[#ecfbf2] text-success"

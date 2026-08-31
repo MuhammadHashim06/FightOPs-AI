@@ -16,6 +16,10 @@ export function handleAuthRouteError(error: unknown) {
     return conflict(message);
   }
 
+  if (message.includes("already linked")) {
+    return conflict(message);
+  }
+
   if (
     message.includes("required") ||
     message.includes("invalid") ||

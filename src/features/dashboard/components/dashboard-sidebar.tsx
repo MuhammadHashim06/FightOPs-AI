@@ -14,40 +14,72 @@ type DashboardSidebarProps = {
 export function DashboardSidebar({ user }: DashboardSidebarProps) {
   const pathname = usePathname();
   const basePath = `/dashboard/${user.role}`;
-  const primaryNavItems = [
-    {
-      href: basePath,
-      label: "Overview",
-      icon: OverviewIcon,
-    },
-    {
-      href: `${basePath}/events`,
-      label: "Events",
-      icon: CalendarIcon,
-    },
-    {
-      href: `${basePath}/human-action`,
-      label: "Human Action",
-      icon: AlertIcon,
-    },
-    {
-      href: `${basePath}/documents`,
-      label: "Documents",
-      icon: FolderIcon,
-    },
-    {
-      href: `${basePath}/activity-logs`,
-      label: "Activity Logs",
-      icon: ActivityIcon,
-    },
-  ];
-  const settingsNavItems = [
-    {
-      href: `${basePath}/settings`,
-      label: "Settings",
-      icon: SettingsIcon,
-    },
-  ];
+  const primaryNavItems =
+    user.role === "fighter"
+      ? [
+          {
+            href: basePath,
+            label: "Dashboard",
+            icon: HomeIcon,
+          },
+          {
+            href: `${basePath}/events`,
+            label: "Fight Details",
+            icon: BoltIcon,
+          },
+          {
+            href: `${basePath}/documents`,
+            label: "Documents",
+            icon: FolderIcon,
+          },
+          {
+            href: `${basePath}/human-action`,
+            label: "Support",
+            icon: ChatIcon,
+          },
+          {
+            href: `${basePath}/activity-logs`,
+            label: "Notifications",
+            icon: BellIcon,
+          },
+        ]
+      : [
+          {
+            href: basePath,
+            label: "Overview",
+            icon: OverviewIcon,
+          },
+          {
+            href: `${basePath}/events`,
+            label: "Events",
+            icon: CalendarIcon,
+          },
+          {
+            href: `${basePath}/human-action`,
+            label: "Human Action",
+            icon: AlertIcon,
+          },
+          {
+            href: `${basePath}/documents`,
+            label: "Documents",
+            icon: FolderIcon,
+          },
+          {
+            href: `${basePath}/activity-logs`,
+            label: "Activity Logs",
+            icon: ActivityIcon,
+          },
+        ];
+  const settingsNavItems =
+    user.role === "fighter"
+      ? []
+      : [
+          {
+            href: `${basePath}/settings`,
+            label: "Settings",
+            icon: SettingsIcon,
+          },
+        ];
 
   return (
     <aside className="sticky top-0 flex h-screen w-[250px] shrink-0 flex-col overflow-hidden rounded-r-[24px] border-r border-border-subtle bg-sidebar shadow-[var(--shadow-soft)]">
@@ -101,39 +133,41 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
           </nav>
         </div>
 
-        <div className="mt-6">
-          <p className="px-3 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-            Settings
-          </p>
-          <nav className="mt-3 flex flex-col gap-1.5">
-            {settingsNavItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+        {settingsNavItems.length > 0 ? (
+          <div className="mt-6">
+            <p className="px-3 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Settings
+            </p>
+            <nav className="mt-3 flex flex-col gap-1.5">
+              {settingsNavItems.map((item) => {
+                const isActive =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`group relative flex items-center gap-3 rounded-[12px] border border-transparent px-4 py-3 text-[15px] font-medium outline-none transition focus-visible:outline-none ${
-                    isActive
-                      ? "bg-sidebar-accent text-brand"
-                      : "text-text-body hover:bg-panel-muted hover:text-text-strong"
-                  }`}
-                >
-                  {isActive ? (
-                    <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-brand" />
-                  ) : null}
-                  <item.icon
-                    className={`h-5 w-5 ${
-                      isActive ? "text-brand" : "text-text-body group-hover:text-text-strong"
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group relative flex items-center gap-3 rounded-[12px] border border-transparent px-4 py-3 text-[15px] font-medium outline-none transition focus-visible:outline-none ${
+                      isActive
+                        ? "bg-sidebar-accent text-brand"
+                        : "text-text-body hover:bg-panel-muted hover:text-text-strong"
                     }`}
-                  />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+                  >
+                    {isActive ? (
+                      <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-brand" />
+                    ) : null}
+                    <item.icon
+                      className={`h-5 w-5 ${
+                        isActive ? "text-brand" : "text-text-body group-hover:text-text-strong"
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        ) : null}
       </div>
 
       <div className="shrink-0 border-t border-border-subtle px-5 py-5">
@@ -151,6 +185,80 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function HomeIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 10.5 12 4l8 6.5" />
+      <path d="M6.5 9.5V20h11V9.5" />
+      <path d="M10 20v-5h4v5" />
+    </svg>
+  );
+}
+
+function BoltIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 2 5 13h5l-1 9 8-11h-5l1-9Z" />
+    </svg>
+  );
+}
+
+function ChatIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7 17.5 3 21v-4.8A7.5 7.5 0 0 1 5.3 4.8 10.6 10.6 0 0 1 12 3c5 0 9 3.4 9 7.7s-4 7.8-9 7.8c-1.8 0-3.5-.4-5-1Z" />
+      <path d="M8.5 10.8h.01" />
+      <path d="M12 10.8h.01" />
+      <path d="M15.5 10.8h.01" />
+    </svg>
+  );
+}
+
+function BellIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6.5 9.5a5.5 5.5 0 1 1 11 0c0 6 2.5 7 2.5 7h-16s2.5-1 2.5-7" />
+      <path d="M10 19a2.3 2.3 0 0 0 4 0" />
+    </svg>
   );
 }
 

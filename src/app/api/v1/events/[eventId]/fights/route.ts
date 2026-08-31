@@ -37,7 +37,7 @@ export async function POST(
   try {
     const { eventId } = await context.params;
     const body = (await request.json()) as CreateFightInput;
-    const result = await createFightForEvent(eventId, body);
+    const result = await createFightForEvent(eventId, body, user);
     return created(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create fight.";

@@ -23,6 +23,18 @@ export async function getFightsByEventId(eventId: string) {
   return fights.map(mapFight);
 }
 
+export async function getFightsByFighterId(fighterId: string) {
+  await connectToDatabase();
+
+  const fights = await FightMongoModel.find({
+    $or: [{ fighterAId: fighterId }, { fighterBId: fighterId }],
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return fights.map(mapFight);
+}
+
 export async function getNextFightOrder(eventId: string) {
   await connectToDatabase();
 
@@ -38,8 +50,8 @@ export async function createFight(input: {
   eventId: string;
   order: number;
   division: string;
-  fighterAId: string;
-  fighterBId: string;
+  fighterAId: string | null;
+  fighterBId: string | null;
 }) {
   await connectToDatabase();
 
@@ -54,6 +66,34 @@ export async function createFight(input: {
   });
 
   return mapFight(fight.toObject());
+}
+
+export async function updateFight(input: {
+  fightId: string;
+  division: string;
+  fighterAId: string | null;
+  fighterBId: string | null;
+}) {
+  await connectToDatabase();
+
+  const fight = await FightMongoModel.findByIdAndUpdate(
+    input.fightId,
+    {
+      division: input.division,
+      fighterAId: input.fighterAId,
+      fighterBId: input.fighterBId,
+    },
+    { returnDocument: "after" },
+  ).lean();
+
+  return fight ? mapFight(fight) : null;
+}
+
+export async function deleteFight(fightId: string) {
+  await connectToDatabase();
+
+  const fight = await FightMongoModel.findByIdAndDelete(fightId).lean();
+  return fight ? mapFight(fight) : null;
 }
 
 function mapFight(fight: {

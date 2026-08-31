@@ -85,7 +85,6 @@ const sessionSchema = new Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
     revokedAt: {
       type: Date,
@@ -120,7 +119,6 @@ const emailVerificationTokenSchema = new Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
     consumedAt: {
       type: Date,
@@ -155,7 +153,6 @@ const passwordResetTokenSchema = new Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
     consumedAt: {
       type: Date,

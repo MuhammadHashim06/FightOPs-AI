@@ -1,5 +1,17 @@
 export type RequirementPriority = "critical" | "high" | "medium" | "low";
 
+export type RequirementDueAnchor =
+  | "custom_date"
+  | "before_event"
+  | "after_fight_scheduled"
+  | "after_invite_accepted"
+  | "after_signed_agreement_approved";
+
+export type RequirementReminderCadence =
+  | "daily_until_resolved"
+  | "once_before_due"
+  | "off";
+
 export type EventRequirementInputType =
   | "document"
   | "text"
@@ -23,6 +35,16 @@ export type RequirementStructuredField = {
   placeholder: string | null;
 };
 
+export type RequirementDocumentBlock = {
+  key: string;
+  title: string;
+  description: string | null;
+  required: boolean;
+  acceptedFileTypes: string[];
+  humanVerificationRequired: boolean;
+  sortOrder: number;
+};
+
 export type EventRequirementRecord = {
   id: string;
   eventId: string;
@@ -33,11 +55,15 @@ export type EventRequirementRecord = {
   required: boolean;
   priority: RequirementPriority;
   dueDate: string | null;
+  dueAnchor: RequirementDueAnchor;
+  dueOffsetDays: number | null;
   reminderEnabled: boolean;
+  reminderCadence: RequirementReminderCadence;
   reminderDaysBeforeDue: number[];
   reminderSubject: string | null;
   reminderMessage: string | null;
   structuredFields: RequirementStructuredField[];
+  documentBlocks: RequirementDocumentBlock[];
   humanVerificationRequired: boolean;
   isSignedAgreement: boolean;
   acceptedFileTypes: string[];
@@ -55,11 +81,15 @@ export type CreateEventRequirementInput = {
   required: boolean;
   priority: RequirementPriority;
   dueDate?: string;
+  dueAnchor?: RequirementDueAnchor;
+  dueOffsetDays?: number;
   reminderEnabled?: boolean;
+  reminderCadence?: RequirementReminderCadence;
   reminderDaysBeforeDue?: number[];
   reminderSubject?: string;
   reminderMessage?: string;
   structuredFields?: RequirementStructuredField[];
+  documentBlocks?: RequirementDocumentBlock[];
   humanVerificationRequired?: boolean;
   isSignedAgreement?: boolean;
   acceptedFileTypes?: string[];
@@ -76,11 +106,15 @@ export type RequirementTemplateRecord = {
   required: boolean;
   priority: RequirementPriority;
   dueDaysBeforeEvent: number | null;
+  dueAnchor: RequirementDueAnchor;
+  dueOffsetDays: number | null;
   reminderEnabled: boolean;
+  reminderCadence: RequirementReminderCadence;
   reminderDaysBeforeDue: number[];
   reminderSubject: string | null;
   reminderMessage: string | null;
   structuredFields: RequirementStructuredField[];
+  documentBlocks: RequirementDocumentBlock[];
   humanVerificationRequired: boolean;
   isSignedAgreement: boolean;
   acceptedFileTypes: string[];
@@ -98,11 +132,15 @@ export type CreateRequirementTemplateInput = {
   required: boolean;
   priority: RequirementPriority;
   dueDaysBeforeEvent?: number;
+  dueAnchor?: RequirementDueAnchor;
+  dueOffsetDays?: number;
   reminderEnabled?: boolean;
+  reminderCadence?: RequirementReminderCadence;
   reminderDaysBeforeDue?: number[];
   reminderSubject?: string;
   reminderMessage?: string;
   structuredFields?: RequirementStructuredField[];
+  documentBlocks?: RequirementDocumentBlock[];
   humanVerificationRequired?: boolean;
   isSignedAgreement?: boolean;
   acceptedFileTypes?: string[];
@@ -132,6 +170,33 @@ export type ReminderLogRecord = {
   message: string;
   status: ReminderLogStatus;
   sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DocumentSubmissionStatus =
+  | "PENDING_REVIEW"
+  | "ACCEPTED"
+  | "REJECTED";
+
+export type DocumentSubmissionRecord = {
+  id: string;
+  eventId: string;
+  fighterId: string;
+  fightId: string | null;
+  eventRequirementId: string;
+  fighterRequirementId: string;
+  uploadedByUserId: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageProvider: "local" | "r2";
+  storageKey: string;
+  publicUrl: string | null;
+  status: DocumentSubmissionStatus;
+  reviewNote: string | null;
+  reviewedByUserId: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

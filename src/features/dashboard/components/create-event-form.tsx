@@ -331,6 +331,14 @@ export function CreateEventForm({
                                   .join(", ")}
                               </p>
                             ) : null}
+                            {template.documentBlocks.length > 0 ? (
+                              <p className="mt-2 text-[13px] text-text-muted">
+                                Document blocks:{" "}
+                                {template.documentBlocks
+                                  .map((block) => block.title)
+                                  .join(", ")}
+                              </p>
+                            ) : null}
                           </div>
                         </label>
                       );
@@ -437,19 +445,45 @@ function TemplateTag({ children }: { children: ReactNode }) {
 }
 
 function buildScheduleLabel(template: RequirementTemplateRecord) {
+  const dueOffsetDays = template.dueOffsetDays ?? template.dueDaysBeforeEvent;
   const dueLabel =
-    typeof template.dueDaysBeforeEvent === "number"
-      ? `Due ${template.dueDaysBeforeEvent} day${
-          template.dueDaysBeforeEvent === 1 ? "" : "s"
-        } before event`
+    typeof dueOffsetDays === "number"
+      ? `Due ${dueOffsetDays} day${dueOffsetDays === 1 ? "" : "s"} ${labelForDueAnchor(
+          template.dueAnchor,
+        )}`
       : "No due offset";
 
   const reminderDay = template.reminderDaysBeforeDue[0];
-  const reminderLabel = template.reminderEnabled
-    ? `Reminder ${reminderDay ?? 0} day${reminderDay === 1 ? "" : "s"} before due`
-    : "Reminder off";
+  const reminderLabel =
+    template.reminderCadence === "off" || !template.reminderEnabled
+      ? "Reminder off"
+      : template.reminderCadence === "once_before_due"
+        ? `One reminder ${reminderDay ?? 0} day${reminderDay === 1 ? "" : "s"} before due`
+        : `Daily reminders from ${reminderDay ?? 0} day${
+            reminderDay === 1 ? "" : "s"
+          } before due`;
 
   return `${dueLabel} - ${reminderLabel}`;
+}
+
+function labelForDueAnchor(anchor: RequirementTemplateRecord["dueAnchor"]) {
+  if (anchor === "custom_date") {
+    return "on custom deadline";
+  }
+
+  if (anchor === "before_event") {
+    return "before event";
+  }
+
+  if (anchor === "after_fight_scheduled") {
+    return "after fight scheduled";
+  }
+
+  if (anchor === "after_invite_accepted") {
+    return "after invite accepted";
+  }
+
+  return "after signed agreement approved";
 }
 
 function labelForInputType(inputType: RequirementTemplateRecord["inputType"]) {

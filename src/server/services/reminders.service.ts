@@ -7,12 +7,9 @@ import { sendOperationalReminderEmail } from "@/server/services/email.service";
 import { getEventById } from "@/server/services/events.service";
 import type { FighterRequirementStatus, ReminderLogRecord } from "@/types/readiness";
 
-const pendingStatuses = new Set<FighterRequirementStatus>([
+const fighterActionStatuses = new Set<FighterRequirementStatus>([
   "WAITING",
-  "PROCESSING",
-  "RECEIVED",
   "NEEDS_RESUBMISSION",
-  "HUMAN_ACTION",
 ]);
 
 export async function syncEventReminderQueue(eventId: string) {
@@ -38,7 +35,7 @@ export async function syncEventReminderQueue(eventId: string) {
   const createdLogs: ReminderLogRecord[] = [];
 
   for (const requirement of fighterRequirements) {
-    if (!pendingStatuses.has(requirement.status)) {
+    if (!fighterActionStatuses.has(requirement.status)) {
       continue;
     }
 
@@ -54,12 +51,15 @@ export async function syncEventReminderQueue(eventId: string) {
 
     const eventRequirement = eventRequirementMap.get(requirement.eventRequirementId);
 
-    if (!eventRequirement?.reminderEnabled) {
+    if (!eventRequirement?.reminderEnabled || eventRequirement.reminderCadence === "off") {
       continue;
     }
 
-    for (const reminderDays of eventRequirement.reminderDaysBeforeDue) {
-      const scheduledFor = calculateScheduledFor(requirement.dueDate, reminderDays);
+    for (const scheduledFor of calculateReminderSchedule({
+      dueDateIso: requirement.dueDate,
+      cadence: eventRequirement.reminderCadence,
+      reminderDaysBeforeDue: eventRequirement.reminderDaysBeforeDue,
+    })) {
       const fight = requirement.fightId ? fightMap.get(requirement.fightId) : null;
 
       const log = await reminderLogsRepository.upsertReminder({
@@ -71,7 +71,7 @@ export async function syncEventReminderQueue(eventId: string) {
         recipientEmail: fighter.managerEmail,
         requirementName: eventRequirement.name,
         eventName: event.name,
-        scheduledFor,
+        scheduledFor: scheduledFor.toISOString(),
         dueDate: requirement.dueDate,
         subject:
           eventRequirement.reminderSubject ??
@@ -119,8 +119,24 @@ export async function listEventReminders(eventId: string) {
 
 export async function sendDueReminders(eventId: string) {
   const { reminders } = await listEventReminders(eventId);
+  const fighterRequirements = await fighterRequirementsRepository.listByEventId(eventId);
+  const actionableRequirementKeys = new Set(
+    fighterRequirements
+      .filter((requirement) => fighterActionStatuses.has(requirement.status))
+      .map((requirement) =>
+        buildReminderRequirementKey(
+          requirement.fighterId,
+          requirement.eventRequirementId,
+        ),
+      ),
+  );
   const dueReminders = reminders.filter(
-    (item) => item.status === "PENDING" && new Date(item.scheduledFor) <= new Date(),
+    (item) =>
+      item.status === "PENDING" &&
+      new Date(item.scheduledFor) <= new Date() &&
+      actionableRequirementKeys.has(
+        buildReminderRequirementKey(item.fighterId, item.eventRequirementId),
+      ),
   );
 
   let sentCount = 0;
@@ -152,14 +168,64 @@ export async function sendDueReminders(eventId: string) {
   };
 }
 
-function calculateScheduledFor(dueDateIso: string, reminderDaysBeforeDue: number) {
-  const date = new Date(dueDateIso);
-  date.setUTCDate(date.getUTCDate() - reminderDaysBeforeDue);
-  return date.toISOString();
+function calculateReminderSchedule(params: {
+  dueDateIso: string;
+  cadence: "daily_until_resolved" | "once_before_due" | "off";
+  reminderDaysBeforeDue: number[];
+}) {
+  if (params.cadence === "off") {
+    return [];
+  }
+
+  if (params.cadence === "once_before_due") {
+    const today = startOfUtcDay(new Date());
+
+    return params.reminderDaysBeforeDue
+      .map((daysBeforeDue) => startOfUtcDay(addDays(params.dueDateIso, -daysBeforeDue)))
+      .filter((date) => date.getTime() >= today.getTime());
+  }
+
+  const dueDate = startOfUtcDay(new Date(params.dueDateIso));
+  const today = startOfUtcDay(new Date());
+  const configuredStartDate = startOfUtcDay(
+    addDays(
+      params.dueDateIso,
+      -(params.reminderDaysBeforeDue[0] ?? 0),
+    ),
+  );
+  const firstReminderDate =
+    configuredStartDate.getTime() > today.getTime() ? configuredStartDate : today;
+  const schedule: Date[] = [];
+
+  for (
+    const date = firstReminderDate;
+    date.getTime() <= dueDate.getTime();
+    date.setUTCDate(date.getUTCDate() + 1)
+  ) {
+    schedule.push(new Date(date));
+  }
+
+  return schedule;
+}
+
+function addDays(dateIso: string, days: number) {
+  const date = new Date(dateIso);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date;
+}
+
+function startOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
 }
 
 function buildReminderSubject(eventName: string, requirementName: string) {
   return `${eventName}: ${requirementName} reminder`;
+}
+
+function buildReminderRequirementKey(fighterId: string, eventRequirementId: string) {
+  return `${fighterId}:${eventRequirementId}`;
 }
 
 function buildReminderMessage(params: {

@@ -55,6 +55,18 @@ export type PasswordResetToken = {
   consumedAt: string | null;
 };
 
+export type FighterInviteToken = {
+  id: string;
+  fighterId: string;
+  eventId: string;
+  fightId: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: string;
+  createdAt: string;
+  consumedAt: string | null;
+};
+
 export type RegisterInput = {
   email: string;
   password: string;
@@ -85,6 +97,12 @@ export type VerifyEmailInput = {
 
 export type ResendVerificationInput = {
   email: string;
+};
+
+export type AcceptFighterInviteInput = {
+  token: string;
+  password?: string;
+  confirmPassword?: string;
 };
 
 export type SafeAuthUser = Omit<AuthUser, "passwordHash">;

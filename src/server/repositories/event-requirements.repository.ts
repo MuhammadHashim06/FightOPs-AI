@@ -33,11 +33,15 @@ export const eventRequirementsRepository = {
       required: input.required,
       priority: input.priority,
       dueDate: input.dueDate ?? null,
+      dueAnchor: input.dueAnchor ?? "before_event",
+      dueOffsetDays: typeof input.dueOffsetDays === "number" ? input.dueOffsetDays : null,
       reminderEnabled: input.reminderEnabled ?? false,
+      reminderCadence: input.reminderCadence ?? "daily_until_resolved",
       reminderDaysBeforeDue: input.reminderDaysBeforeDue ?? [],
       reminderSubject: normalizeOptionalText(input.reminderSubject),
       reminderMessage: normalizeOptionalText(input.reminderMessage),
       structuredFields: (input.structuredFields ?? []).map(mapStructuredFieldInput),
+      documentBlocks: normalizeDocumentBlocks(input),
       humanVerificationRequired: input.humanVerificationRequired ?? false,
       isSignedAgreement: input.isSignedAgreement ?? false,
       acceptedFileTypes: input.acceptedFileTypes ?? [],
@@ -83,6 +87,48 @@ function mapStructuredFieldInput(field: {
   };
 }
 
+function normalizeDocumentBlocks(input: CreateEventRequirementInput) {
+  if (Array.isArray(input.documentBlocks) && input.documentBlocks.length > 0) {
+    return input.documentBlocks.map(mapDocumentBlockInput);
+  }
+
+  if (input.inputType !== "document") {
+    return [];
+  }
+
+  return [
+    {
+      key: slugify(input.name),
+      title: input.name.trim(),
+      description: normalizeOptionalText(input.description),
+      required: input.required,
+      acceptedFileTypes: input.acceptedFileTypes ?? [],
+      humanVerificationRequired: input.humanVerificationRequired ?? false,
+      sortOrder: 1,
+    },
+  ];
+}
+
+function mapDocumentBlockInput(block: EventRequirementRecord["documentBlocks"][number]) {
+  return {
+    key: block.key.trim(),
+    title: block.title.trim(),
+    description: normalizeOptionalText(block.description ?? undefined),
+    required: block.required,
+    acceptedFileTypes: block.acceptedFileTypes ?? [],
+    humanVerificationRequired: block.humanVerificationRequired,
+    sortOrder: block.sortOrder,
+  };
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function mapEventRequirement(requirement: {
   _id: { toString(): string };
   eventId: { toString(): string };
@@ -93,7 +139,10 @@ function mapEventRequirement(requirement: {
   required: boolean;
   priority: EventRequirementRecord["priority"];
   dueDate: Date | null;
+  dueAnchor?: EventRequirementRecord["dueAnchor"];
+  dueOffsetDays?: number | null;
   reminderEnabled: boolean;
+  reminderCadence?: EventRequirementRecord["reminderCadence"];
   reminderDaysBeforeDue: number[];
   reminderSubject: string | null;
   reminderMessage: string | null;
@@ -104,6 +153,7 @@ function mapEventRequirement(requirement: {
     required: boolean;
     placeholder: string | null;
   }>;
+  documentBlocks?: EventRequirementRecord["documentBlocks"];
   humanVerificationRequired: boolean;
   isSignedAgreement: boolean;
   acceptedFileTypes: string[];
@@ -122,7 +172,12 @@ function mapEventRequirement(requirement: {
     required: requirement.required,
     priority: requirement.priority,
     dueDate: requirement.dueDate ? requirement.dueDate.toISOString() : null,
+    dueAnchor: requirement.dueAnchor ?? "before_event",
+    dueOffsetDays: requirement.dueOffsetDays ?? null,
     reminderEnabled: requirement.reminderEnabled,
+    reminderCadence:
+      requirement.reminderCadence ??
+      (requirement.reminderEnabled ? "daily_until_resolved" : "off"),
     reminderDaysBeforeDue: requirement.reminderDaysBeforeDue ?? [],
     reminderSubject: requirement.reminderSubject ?? null,
     reminderMessage: requirement.reminderMessage ?? null,
@@ -133,6 +188,7 @@ function mapEventRequirement(requirement: {
       required: field.required,
       placeholder: field.placeholder ?? null,
     })),
+    documentBlocks: normalizeMappedDocumentBlocks(requirement),
     humanVerificationRequired: requirement.humanVerificationRequired,
     isSignedAgreement: requirement.isSignedAgreement,
     acceptedFileTypes: requirement.acceptedFileTypes ?? [],
@@ -141,4 +197,44 @@ function mapEventRequirement(requirement: {
     createdAt: requirement.createdAt.toISOString(),
     updatedAt: requirement.updatedAt.toISOString(),
   };
+}
+
+function normalizeMappedDocumentBlocks(requirement: {
+  name: string;
+  description: string | null;
+  inputType: EventRequirementRecord["inputType"];
+  required: boolean;
+  acceptedFileTypes: string[];
+  humanVerificationRequired: boolean;
+  documentBlocks?: EventRequirementRecord["documentBlocks"];
+}) {
+  if (requirement.documentBlocks && requirement.documentBlocks.length > 0) {
+    return requirement.documentBlocks
+      .map((block) => ({
+        key: block.key,
+        title: block.title,
+        description: block.description ?? null,
+        required: block.required,
+        acceptedFileTypes: block.acceptedFileTypes ?? [],
+        humanVerificationRequired: block.humanVerificationRequired,
+        sortOrder: block.sortOrder,
+      }))
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
+  if (requirement.inputType !== "document") {
+    return [];
+  }
+
+  return [
+    {
+      key: slugify(requirement.name),
+      title: requirement.name,
+      description: requirement.description ?? null,
+      required: requirement.required,
+      acceptedFileTypes: requirement.acceptedFileTypes ?? [],
+      humanVerificationRequired: requirement.humanVerificationRequired,
+      sortOrder: 1,
+    },
+  ];
 }

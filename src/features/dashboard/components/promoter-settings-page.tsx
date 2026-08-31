@@ -7,7 +7,9 @@ import { useToast } from "@/providers/toast-provider";
 import type { SafeAuthUser } from "@/types/auth";
 import type {
   EventRequirementInputType,
+  RequirementDueAnchor,
   RequirementPriority,
+  RequirementReminderCadence,
   RequirementTemplateRecord,
 } from "@/types/readiness";
 
@@ -72,6 +74,28 @@ const templatePriorities: Array<{
   { value: "low", label: "Low" },
 ];
 
+const dueAnchorOptions: Array<{
+  value: RequirementDueAnchor;
+  label: string;
+}> = [
+  { value: "after_invite_accepted", label: "Due in X days after invite acceptance" },
+  { value: "after_fight_scheduled", label: "Due in X days after fight scheduling" },
+  { value: "before_event", label: "Deadline X days before event" },
+  {
+    value: "after_signed_agreement_approved",
+    label: "Due in X days after agreement approval",
+  },
+];
+
+const reminderCadenceOptions: Array<{
+  value: RequirementReminderCadence;
+  label: string;
+}> = [
+  { value: "daily_until_resolved", label: "Daily until resolved" },
+  { value: "once_before_due", label: "Once before due date" },
+  { value: "off", label: "No reminder" },
+];
+
 export function PromoterSettingsPage({
   user,
   initialTemplates,
@@ -83,6 +107,7 @@ export function PromoterSettingsPage({
   const [templateState, setTemplateState] = useState(initialTemplates);
   const [isSubmittingTemplate, setIsSubmittingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Record<string, boolean>>({
     "missing-docs": true,
@@ -119,7 +144,19 @@ export function PromoterSettingsPage({
 
     try {
       const dueDaysValue = String(formData.get("dueDaysBeforeEvent") ?? "").trim();
+      const dueOffsetDaysValue = String(formData.get("dueOffsetDays") ?? "").trim();
       const reminderDaysValue = String(formData.get("reminderDaysBeforeDue") ?? "").trim();
+      const dueAnchor = String(
+        formData.get("dueAnchor") ?? "before_event",
+      ) as RequirementDueAnchor;
+      const reminderCadence = String(
+        formData.get("reminderCadence") ?? "daily_until_resolved",
+      ) as RequirementReminderCadence;
+      const dueOffsetDays = dueOffsetDaysValue
+        ? Number(dueOffsetDaysValue)
+        : dueDaysValue
+          ? Number(dueDaysValue)
+          : undefined;
 
       const payload = {
         category: String(formData.get("category") ?? ""),
@@ -128,8 +165,11 @@ export function PromoterSettingsPage({
         inputType: String(formData.get("inputType") ?? "document"),
         required: formData.get("required") === "on",
         priority: String(formData.get("priority") ?? "medium"),
-        dueDaysBeforeEvent: dueDaysValue ? Number(dueDaysValue) : undefined,
-        reminderEnabled: formData.get("reminderEnabled") === "on",
+        dueAnchor,
+        dueOffsetDays,
+        dueDaysBeforeEvent: dueAnchor === "before_event" ? dueOffsetDays : undefined,
+        reminderEnabled: reminderCadence !== "off",
+        reminderCadence,
         reminderDaysBeforeDue: reminderDaysValue ? [Number(reminderDaysValue)] : [],
         reminderSubject: String(formData.get("reminderSubject") ?? ""),
         reminderMessage: String(formData.get("reminderMessage") ?? ""),
@@ -176,6 +216,7 @@ export function PromoterSettingsPage({
       );
 
       setEditingTemplateId(null);
+      setIsTemplateModalOpen(false);
       form.reset();
 
       showToast({
@@ -217,6 +258,7 @@ export function PromoterSettingsPage({
 
       if (editingTemplateId === templateId) {
         setEditingTemplateId(null);
+        setIsTemplateModalOpen(false);
       }
 
       showToast({
@@ -399,31 +441,35 @@ export function PromoterSettingsPage({
         description="Reusable readiness rules that are applied automatically to every new event."
       >
         <div className="space-y-5">
-          <form
-            onSubmit={handleTemplateSubmit}
-            className="space-y-4 rounded-[16px] border border-border-subtle bg-white p-4"
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTemplateId(null);
+                setTemplateError(null);
+                setIsTemplateModalOpen(true);
+              }}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong"
+            >
+              <PlusIcon className="h-4 w-4" />
+              <span>Add Template</span>
+            </button>
+          </div>
+
+          {isTemplateModalOpen ? (
+            <FormModal
+              title={editingTemplate ? "Edit template" : "Add template"}
+              description="These defaults will auto-populate new events when they are created."
+              onClose={() => {
+                setEditingTemplateId(null);
+                setTemplateError(null);
+                setIsTemplateModalOpen(false);
+              }}
+            >
+              <form
+                onSubmit={handleTemplateSubmit}
+                className="space-y-4"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-[18px] font-semibold text-text-strong">
-                  {editingTemplate ? "Edit template" : "Add template"}
-                </h3>
-                <p className="text-sm text-text-muted">
-                  These defaults will auto-populate new events when they are created.
-                </p>
-              </div>
-
-              {editingTemplate ? (
-                <button
-                  type="button"
-                  onClick={() => setEditingTemplateId(null)}
-                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-                >
-                  Clear edit
-                </button>
-              ) : null}
-            </div>
-
             {templateError ? (
               <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger">
                 {templateError}
@@ -490,26 +536,67 @@ export function PromoterSettingsPage({
                 </select>
               </SettingsField>
 
-              <SettingsField label="Due days before event">
+              <SettingsField label="Deadline rule">
+                <select
+                  key={`due-anchor-${editingTemplate?.id ?? "new"}`}
+                  name="dueAnchor"
+                  defaultValue={editingTemplate?.dueAnchor ?? "before_event"}
+                  className={inputClassName}
+                >
+                  {dueAnchorOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </SettingsField>
+
+              <SettingsField label="Deadline days">
                 <input
-                  key={`due-${editingTemplate?.id ?? "new"}`}
-                  name="dueDaysBeforeEvent"
+                  key={`due-offset-${editingTemplate?.id ?? "new"}`}
+                  name="dueOffsetDays"
                   type="number"
                   min="0"
-                  defaultValue={editingTemplate?.dueDaysBeforeEvent ?? ""}
+                  defaultValue={
+                    editingTemplate?.dueOffsetDays ??
+                    editingTemplate?.dueDaysBeforeEvent ??
+                    ""
+                  }
                   className={inputClassName}
                 />
               </SettingsField>
 
-              <SettingsField label="Reminder days before due">
+              <SettingsField label="Reminder cadence">
+                <select
+                  key={`reminder-cadence-${editingTemplate?.id ?? "new"}`}
+                  name="reminderCadence"
+                  defaultValue={
+                    editingTemplate?.reminderCadence ?? "daily_until_resolved"
+                  }
+                  className={inputClassName}
+                >
+                  {reminderCadenceOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </SettingsField>
+
+              <SettingsField label="Start daily reminders">
                 <input
                   key={`reminder-${editingTemplate?.id ?? "new"}`}
                   name="reminderDaysBeforeDue"
                   type="number"
                   min="0"
                   defaultValue={editingTemplate?.reminderDaysBeforeDue[0] ?? ""}
+                  placeholder="0"
                   className={inputClassName}
                 />
+                <p className="text-sm text-text-muted">
+                  Daily reminders begin this many days before the deadline and stop once the
+                  requirement is resolved.
+                </p>
               </SettingsField>
             </div>
 
@@ -556,12 +643,6 @@ export function PromoterSettingsPage({
                 defaultChecked={editingTemplate?.required ?? true}
               />
               <InlineCheckbox
-                key={`reminderEnabled-${editingTemplate?.id ?? "new"}`}
-                name="reminderEnabled"
-                label="Send reminder"
-                defaultChecked={editingTemplate?.reminderEnabled ?? true}
-              />
-              <InlineCheckbox
                 key={`human-${editingTemplate?.id ?? "new"}`}
                 name="humanVerificationRequired"
                 label="Human verify"
@@ -591,7 +672,9 @@ export function PromoterSettingsPage({
                 </span>
               </button>
             </div>
-          </form>
+              </form>
+            </FormModal>
+          ) : null}
 
           <div className="space-y-3">
             {templateState.map((template) => (
@@ -614,6 +697,12 @@ export function PromoterSettingsPage({
                     <p className="text-sm text-text-muted">
                       Fields:{" "}
                       {template.structuredFields.map((field) => field.label).join(", ")}
+                    </p>
+                  ) : null}
+                  {template.documentBlocks.length > 0 ? (
+                    <p className="text-sm text-text-muted">
+                      Document blocks:{" "}
+                      {template.documentBlocks.map((block) => block.title).join(", ")}
                     </p>
                   ) : null}
                   <p className="text-sm text-text-muted">
@@ -642,7 +731,11 @@ export function PromoterSettingsPage({
                   />
                   <button
                     type="button"
-                    onClick={() => setEditingTemplateId(template.id)}
+                    onClick={() => {
+                      setEditingTemplateId(template.id);
+                      setTemplateError(null);
+                      setIsTemplateModalOpen(true);
+                    }}
                     className="rounded-full p-2 text-text-muted transition hover:bg-panel-muted hover:text-text-strong"
                     aria-label="Edit template"
                   >
@@ -795,19 +888,45 @@ export function PromoterSettingsPage({
 }
 
 function buildScheduleLabel(template: RequirementTemplateRecord) {
+  const dueOffsetDays = template.dueOffsetDays ?? template.dueDaysBeforeEvent;
   const dueLabel =
-    typeof template.dueDaysBeforeEvent === "number"
-      ? `Due ${template.dueDaysBeforeEvent} day${
-          template.dueDaysBeforeEvent === 1 ? "" : "s"
-        } before`
+    typeof dueOffsetDays === "number"
+      ? `Due ${dueOffsetDays} day${dueOffsetDays === 1 ? "" : "s"} ${labelForDueAnchor(
+          template.dueAnchor,
+        )}`
       : "No due offset";
 
   const reminderDay = template.reminderDaysBeforeDue[0];
-  const reminderLabel = template.reminderEnabled
-    ? `Reminder ${reminderDay ?? 0} day${reminderDay === 1 ? "" : "s"} before`
-    : "Reminder off";
+  const reminderLabel =
+    template.reminderCadence === "off" || !template.reminderEnabled
+      ? "Reminder off"
+      : template.reminderCadence === "once_before_due"
+        ? `One reminder ${reminderDay ?? 0} day${reminderDay === 1 ? "" : "s"} before due`
+        : `Daily reminders from ${reminderDay ?? 0} day${
+            reminderDay === 1 ? "" : "s"
+          } before due`;
 
   return `${dueLabel} - ${reminderLabel}`;
+}
+
+function labelForDueAnchor(anchor: RequirementDueAnchor) {
+  if (anchor === "custom_date") {
+    return "on custom deadline";
+  }
+
+  if (anchor === "before_event") {
+    return "before event";
+  }
+
+  if (anchor === "after_fight_scheduled") {
+    return "after fight scheduled";
+  }
+
+  if (anchor === "after_invite_accepted") {
+    return "after invite accepted";
+  }
+
+  return "after signed agreement approved";
 }
 
 function labelForInputType(inputType: EventRequirementInputType) {
@@ -846,6 +965,40 @@ function SettingsCard({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function FormModal({
+  title,
+  description,
+  children,
+  onClose,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0f172a]/40 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
+          <div>
+            <h2 className="text-[20px] font-semibold text-text-strong">{title}</h2>
+            <p className="mt-1 text-[15px] text-text-body">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-text-muted transition hover:bg-panel-muted hover:text-text-strong"
+            aria-label="Close modal"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="px-5 py-5">{children}</div>
+      </div>
+    </div>
   );
 }
 
@@ -1005,6 +1158,24 @@ function PlusIcon({ className }: { className?: string }) {
     >
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }

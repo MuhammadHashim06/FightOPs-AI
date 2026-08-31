@@ -26,6 +26,7 @@ export type UpdateEventInput = Partial<CreateEventInput>;
 
 export type FighterRecord = {
   id: string;
+  userId: string | null;
   fullName: string;
   nationality: string | null;
   stance: string | null;
@@ -34,6 +35,10 @@ export type FighterRecord = {
   managerEmail: string | null;
   managerPhone: string | null;
   photoUrl: string | null;
+  contractReference: string | null;
+  inviteStatus: "pending" | "accepted";
+  inviteSentAt: string | null;
+  inviteAcceptedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -58,10 +63,13 @@ export type CreateFighterInput = {
   managerPhone?: string;
   division?: string;
   notes?: string;
+  contractReference?: string;
 };
 
 export type CreateFightInput = {
   division: string;
-  fighterA: CreateFighterInput;
-  fighterB: CreateFighterInput;
+  fighterA: CreateFighterInput | null;
+  fighterB: CreateFighterInput | null;
 };
+
+export type UpdateFightInput = CreateFightInput;

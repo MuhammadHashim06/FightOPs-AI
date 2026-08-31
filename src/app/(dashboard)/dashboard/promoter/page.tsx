@@ -1,5 +1,4 @@
 import { PromoterOverview } from "@/features/dashboard/components/promoter-overview";
-import { promoterEvents } from "@/features/dashboard/data/promoter-events";
 import {
   getPromoterOverviewStats,
   listPromoterDashboardEvents,
@@ -11,7 +10,7 @@ export default async function PromoterDashboardPage() {
 
   return (
     <PromoterOverview
-      events={events.length > 0 ? events : promoterEvents}
+      events={events}
       stats={stats}
     />
   );

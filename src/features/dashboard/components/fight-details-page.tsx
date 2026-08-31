@@ -1,18 +1,38 @@
 import Link from "next/link";
 
 import { FightHeroCard } from "@/features/dashboard/components/fight-hero-card";
-import type { PromoterFightDetail, RequirementStatus, RequirementTone } from "@/features/dashboard/data/promoter-events";
+import type { PromoterFightDetailData } from "@/server/services/events.service";
 
-export function FightDetailsPage({ fight }: { fight: PromoterFightDetail }) {
+export function FightDetailsPage({
+  fight,
+}: {
+  fight: PromoterFightDetailData;
+}) {
+  const attentionCount = fight.fighterOverviews.filter(
+    (item) =>
+      item.inviteStatusLabel !== "Accepted" ||
+      item.isContractOverdue ||
+      item.contractStatusLabel === "Needs resubmission",
+  ).length;
+
   return (
     <main className="space-y-5">
-      <Link
-        href={`/dashboard/promoter/events/${fight.eventSlug}`}
-        className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        <span>Back</span>
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href={`/dashboard/promoter/events/${fight.eventSlug}`}
+          className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          <span>Back</span>
+        </Link>
+
+        <Link
+          href={`/dashboard/promoter/events/${fight.eventSlug}/fights/${fight.id}/edit`}
+          className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+        >
+          Edit fight
+        </Link>
+      </div>
 
       <FightHeroCard bout={fight.bout} />
 
@@ -28,7 +48,7 @@ export function FightDetailsPage({ fight }: { fight: PromoterFightDetail }) {
               </p>
             </div>
             <span className="inline-flex rounded-[10px] border border-[#ffd38f] bg-[#fff6e5] px-3 py-1.5 text-sm font-medium text-[#dc7d09]">
-              2 items need attention
+              {attentionCount} item{attentionCount === 1 ? "" : "s"} need attention
             </span>
           </div>
 
@@ -77,6 +97,9 @@ export function FightDetailsPage({ fight }: { fight: PromoterFightDetail }) {
                       status={requirement.leftStatus}
                       confidence={requirement.leftConfidence}
                       note={requirement.leftNote}
+                      fileName={requirement.leftFileName}
+                      submittedAt={requirement.leftSubmittedAt}
+                      eventSlug={fight.eventSlug}
                     />
                   </div>
                   <div className="px-4 py-4">
@@ -84,6 +107,9 @@ export function FightDetailsPage({ fight }: { fight: PromoterFightDetail }) {
                       status={requirement.rightStatus}
                       confidence={requirement.rightConfidence}
                       note={requirement.rightNote}
+                      fileName={requirement.rightFileName}
+                      submittedAt={requirement.rightSubmittedAt}
+                      eventSlug={fight.eventSlug}
                     />
                   </div>
                 </div>
@@ -92,49 +118,56 @@ export function FightDetailsPage({ fight }: { fight: PromoterFightDetail }) {
           </div>
         </section>
 
-        <aside className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
-          <div className="inline-flex rounded-[10px] bg-sidebar-accent px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.08em] text-brand">
-            AI Summary
-          </div>
+        <aside className="space-y-5">
+          <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+            <div className="inline-flex rounded-[10px] bg-sidebar-accent px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.08em] text-brand">
+              AI Summary
+            </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-            <SummaryMetric label="Completed" value={String(fight.insight.completed)} tone="success" />
-            <SummaryMetric label="Missing" value={String(fight.insight.missing)} tone="warning" />
-            <SummaryMetric label="Under review" value={String(fight.insight.underReview)} tone="highlight" />
-          </div>
+            <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+              <SummaryMetric label="Completed" value={String(fight.insight.completed)} tone="success" />
+              <SummaryMetric label="Missing" value={String(fight.insight.missing)} tone="warning" />
+              <SummaryMetric label="Under review" value={String(fight.insight.underReview)} tone="highlight" />
+            </div>
 
-          <div className="mt-8 space-y-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                Waiting For
-              </p>
-              <div className="mt-4 space-y-4">
-                {fight.insight.waitingFor.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between gap-3">
-                    <span className="text-[15px] text-text-body">{item.label}</span>
-                    <PriorityPill tone={item.tone} />
-                  </div>
-                ))}
+            <div className="mt-8 space-y-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                  Waiting For
+                </p>
+                <div className="mt-4 space-y-4">
+                  {fight.insight.waitingFor.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between gap-3">
+                      <span className="text-[15px] text-text-body">{item.label}</span>
+                      <PriorityPill tone={item.tone} />
+                    </div>
+                  ))}
+                  {fight.insight.waitingFor.length === 0 ? (
+                    <p className="text-[15px] text-text-body">
+                      No blocking items right now.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                  Next Action
+                </p>
+                <p className="mt-4 text-[15px] leading-7 text-text-body">
+                  {fight.insight.nextAction}
+                </p>
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                Next Action
-              </p>
-              <p className="mt-4 text-[15px] leading-7 text-text-body">
-                {fight.insight.nextAction}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-          >
-            <span>View AI Activity</span>
-            <ArrowRightIcon className="h-4 w-4" />
-          </button>
+            <button
+              type="button"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+            >
+              <span>View AI Activity</span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
+          </section>
         </aside>
       </div>
     </main>
@@ -145,10 +178,16 @@ function RequirementCell({
   status,
   confidence,
   note,
+  fileName,
+  submittedAt,
+  eventSlug,
 }: {
-  status: RequirementStatus;
+  status: "accepted" | "missing" | "under_review";
   confidence: string;
   note: string;
+  fileName: string | null;
+  submittedAt: string | null;
+  eventSlug: string;
 }) {
   const badgeStyles =
     status === "accepted"
@@ -183,6 +222,26 @@ function RequirementCell({
         </span>
       </div>
       <p className="text-[15px] text-text-muted">{note}</p>
+      {fileName ? (
+        <div className="rounded-[12px] border border-border-subtle bg-panel-muted px-3 py-2">
+          <p className="truncate text-sm font-medium text-text-strong">{fileName}</p>
+          <p className="mt-1 text-xs text-text-muted">
+            Submitted {submittedAt ?? "recently"}
+          </p>
+          {status === "under_review" ? (
+            <Link
+              href={`/dashboard/promoter/documents?event=${eventSlug}`}
+              className="mt-2 inline-flex text-sm font-semibold text-brand hover:text-brand-strong"
+            >
+              Review document
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <p className="rounded-[12px] border border-dashed border-border-subtle bg-white px-3 py-2 text-sm text-text-muted">
+          No upload yet
+        </p>
+      )}
     </div>
   );
 }
@@ -211,7 +270,7 @@ function SummaryMetric({
   );
 }
 
-function PriorityPill({ tone }: { tone: RequirementTone | "critical" | "high" }) {
+function PriorityPill({ tone }: { tone: "critical" | "high" | "medium" | "low" }) {
   const styles =
     tone === "critical"
       ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"

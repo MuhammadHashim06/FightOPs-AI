@@ -2,7 +2,9 @@ import type { CreateEventRequirementInput } from "@/types/readiness";
 import { eventRequirementsRepository } from "@/server/repositories/event-requirements.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
 import { fightersRepository } from "@/server/repositories/fighters.repository";
+import { getFightById } from "@/server/repositories/fights.repository";
 import { getEventById } from "@/server/services/events.service";
+import { buildDueDateByRequirementId } from "@/server/services/requirement-schedule.service";
 import { syncEventReminderQueue } from "@/server/services/reminders.service";
 import { recalculateFighterReadiness } from "@/server/services/readiness.service";
 import { validateCreateEventRequirementInput } from "@/server/validators/readiness.validator";
@@ -36,11 +38,25 @@ export async function createEventRequirement(
   const fighterLinks = await fightersRepository.listEventFighterLinks(eventId);
 
   for (const link of fighterLinks) {
+    const [fight, fighter] = await Promise.all([
+      link.fightId ? getFightById(link.fightId) : Promise.resolve(null),
+      fightersRepository.findFighterById(link.fighterId),
+    ]);
+
     await fighterRequirementsRepository.ensureForFighter({
       eventId,
       fighterId: link.fighterId,
       fightId: link.fightId,
       eventRequirements: [requirement],
+      dueDateByRequirementId:
+        fight && fighter
+          ? buildDueDateByRequirementId({
+              event,
+              fight,
+              fighter,
+              eventRequirements: [requirement],
+            })
+          : undefined,
     });
 
     await recalculateFighterReadiness({

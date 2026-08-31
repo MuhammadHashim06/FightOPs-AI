@@ -9,7 +9,9 @@ import { useToast } from "@/providers/toast-provider";
 import type {
   EventRequirementInputType,
   EventRequirementRecord,
+  RequirementDueAnchor,
   RequirementPriority,
+  RequirementReminderCadence,
 } from "@/types/readiness";
 
 const requirementCategories = [
@@ -43,6 +45,29 @@ const requirementPriorities: Array<{
   { value: "low", label: "Low" },
 ];
 
+const deadlineRuleOptions: Array<{
+  value: RequirementDueAnchor;
+  label: string;
+}> = [
+  { value: "custom_date", label: "Use exact deadline date" },
+  { value: "after_invite_accepted", label: "Due in X days after invite acceptance" },
+  { value: "after_fight_scheduled", label: "Due in X days after fight scheduling" },
+  { value: "before_event", label: "Deadline X days before event" },
+  {
+    value: "after_signed_agreement_approved",
+    label: "Due in X days after agreement approval",
+  },
+];
+
+const reminderCadenceOptions: Array<{
+  value: RequirementReminderCadence;
+  label: string;
+}> = [
+  { value: "daily_until_resolved", label: "Daily until resolved" },
+  { value: "once_before_due", label: "Once before deadline" },
+  { value: "off", label: "No reminder" },
+];
+
 export function EventRequirementsPage({
   eventSlug,
   eventId,
@@ -58,6 +83,9 @@ export function EventRequirementsPage({
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+  const [deadlineRule, setDeadlineRule] =
+    useState<RequirementDueAnchor>("custom_date");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,7 +104,16 @@ export function EventRequirementsPage({
 
     const formData = new FormData(form);
     const dueDate = String(formData.get("dueDate") ?? "").trim();
-    const reminderDays = Number(String(formData.get("reminderDaysBeforeDue") ?? "0"));
+    const dueOffsetDays = String(formData.get("dueOffsetDays") ?? "").trim();
+    const reminderStartDays = Number(
+      String(formData.get("reminderDaysBeforeDue") ?? "0"),
+    );
+    const reminderCadence = String(
+      formData.get("reminderCadence") ?? "daily_until_resolved",
+    ) as RequirementReminderCadence;
+    const dueAnchor = String(
+      formData.get("dueAnchor") ?? "custom_date",
+    ) as RequirementDueAnchor;
 
     try {
       const response = await fetch(`/api/v1/events/${eventId}/requirements`, {
@@ -91,10 +128,16 @@ export function EventRequirementsPage({
           inputType: String(formData.get("inputType") ?? "document"),
           required: formData.get("required") === "on",
           priority: String(formData.get("priority") ?? "medium"),
-          dueDate: dueDate || undefined,
-          reminderEnabled: formData.get("reminderEnabled") === "on",
+          dueAnchor,
+          dueDate: dueAnchor === "custom_date" ? dueDate || undefined : undefined,
+          dueOffsetDays:
+            dueAnchor === "custom_date" || !dueOffsetDays
+              ? undefined
+              : Number(dueOffsetDays),
+          reminderEnabled: reminderCadence !== "off",
+          reminderCadence,
           reminderDaysBeforeDue:
-            reminderDays > 0 ? [reminderDays] : [],
+            reminderStartDays > 0 ? [reminderStartDays] : [0],
           reminderSubject: String(formData.get("reminderSubject") ?? ""),
           reminderMessage: String(formData.get("reminderMessage") ?? ""),
           humanVerificationRequired:
@@ -116,6 +159,8 @@ export function EventRequirementsPage({
       });
 
       form.reset();
+      setDeadlineRule("custom_date");
+      setIsRequirementModalOpen(false);
 
       startTransition(() => {
         router.refresh();
@@ -143,13 +188,27 @@ export function EventRequirementsPage({
         <span>Back</span>
       </Link>
 
-      <div className="space-y-1">
-        <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
-          Required Documents
-        </h1>
-        <p className="text-lg text-text-body">
-          Configure the checklist for {eventName} and reuse it across every fight on the card.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
+            Required Documents
+          </h1>
+          <p className="text-lg text-text-body">
+            Configure the checklist for {eventName} and reuse it across every fight on the card.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setFormError(null);
+            setIsRequirementModalOpen(true);
+          }}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+        >
+          <PlusIcon className="h-4 w-4" />
+          <span>Add requirement</span>
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-8 border-b border-border-subtle">
@@ -172,15 +231,13 @@ export function EventRequirementsPage({
         </section>
       ) : null}
 
-      <section className="rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
-        <div className="border-b border-border-subtle px-5 py-4">
-          <h2 className="text-[20px] font-semibold text-text-strong">Add requirement</h2>
-          <p className="mt-1 text-[15px] text-text-body">
-            Every new fight will inherit these event-level readiness requirements.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
+      {isRequirementModalOpen ? (
+        <FormModal
+          title="Add requirement"
+          description="Every new fight will inherit this event-level readiness requirement."
+          onClose={() => setIsRequirementModalOpen(false)}
+        >
+          <form onSubmit={handleSubmit} className="space-y-5">
           {formError ? (
             <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger">
               {formError}
@@ -228,11 +285,55 @@ export function EventRequirementsPage({
               </select>
             </FormField>
 
-            <FormField label="Due date (optional)">
-              <input name="dueDate" type="date" className={inputClassName} />
+            <FormField label="Deadline rule">
+              <select
+                name="dueAnchor"
+                className={inputClassName}
+                value={deadlineRule}
+                onChange={(event) =>
+                  setDeadlineRule(event.target.value as RequirementDueAnchor)
+                }
+              >
+                {deadlineRuleOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
-            <FormField label="Reminder days before due">
+            {deadlineRule === "custom_date" ? (
+              <FormField label="Exact deadline">
+                <input name="dueDate" type="date" className={inputClassName} required />
+              </FormField>
+            ) : (
+              <FormField label="Deadline days">
+                <input
+                  name="dueOffsetDays"
+                  type="number"
+                  min="0"
+                  defaultValue="3"
+                  className={inputClassName}
+                  required
+                />
+              </FormField>
+            )}
+
+            <FormField label="Reminder cadence">
+              <select
+                name="reminderCadence"
+                className={inputClassName}
+                defaultValue="daily_until_resolved"
+              >
+                {reminderCadenceOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Start daily reminders">
               <input
                 name="reminderDaysBeforeDue"
                 type="number"
@@ -240,6 +341,10 @@ export function EventRequirementsPage({
                 defaultValue="3"
                 className={inputClassName}
               />
+              <p className="text-sm text-text-muted">
+                For daily cadence, reminders start this many days before the deadline and
+                continue until the item is resolved.
+              </p>
             </FormField>
           </div>
 
@@ -279,11 +384,6 @@ export function EventRequirementsPage({
               defaultChecked
             />
             <ToggleField
-              name="reminderEnabled"
-              label="Send reminders"
-              defaultChecked
-            />
-            <ToggleField
               name="humanVerificationRequired"
               label="Human verification"
             />
@@ -291,12 +391,13 @@ export function EventRequirementsPage({
           </div>
 
           <div className="flex justify-end gap-3">
-            <Link
-              href={`/dashboard/promoter/events/${eventSlug}`}
+            <button
+              type="button"
+              onClick={() => setIsRequirementModalOpen(false)}
               className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
-            </Link>
+            </button>
             <button
               type="submit"
               disabled={isSaving}
@@ -305,8 +406,9 @@ export function EventRequirementsPage({
               {isSaving ? "Saving..." : "Save requirement"}
             </button>
           </div>
-        </form>
-      </section>
+          </form>
+        </FormModal>
+      ) : null}
 
       <section className="rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
         <div className="border-b border-border-subtle px-5 py-4">
@@ -356,13 +458,21 @@ export function EventRequirementsPage({
                             .join(", ")}
                         </div>
                       ) : null}
+                      {requirement.documentBlocks.length > 0 ? (
+                        <div className="mt-2 text-[13px] text-text-muted">
+                          Document blocks:{" "}
+                          {requirement.documentBlocks
+                            .map((block) => block.title)
+                            .join(", ")}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-5 py-4 text-[15px] text-text-body">{requirement.category}</td>
                     <td className="px-5 py-4">
                       <PriorityBadge priority={requirement.priority} />
                     </td>
                     <td className="px-5 py-4 text-[15px] text-text-body">
-                      {requirement.dueDate ? requirement.dueDate.slice(0, 10) : "No deadline"}
+                      {buildDeadlineLabel(requirement)}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
@@ -479,8 +589,70 @@ function RuleBadge({ children }: { children: ReactNode }) {
   );
 }
 
+function FormModal({
+  title,
+  description,
+  children,
+  onClose,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0f172a]/40 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
+          <div>
+            <h2 className="text-[20px] font-semibold text-text-strong">{title}</h2>
+            <p className="mt-1 text-[15px] text-text-body">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-text-muted transition hover:bg-panel-muted hover:text-text-strong"
+            aria-label="Close modal"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="px-5 py-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function labelForInputType(inputType: EventRequirementInputType) {
   return requirementInputTypes.find((item) => item.value === inputType)?.label ?? inputType;
+}
+
+function buildDeadlineLabel(requirement: EventRequirementRecord) {
+  if (requirement.dueAnchor === "custom_date") {
+    return requirement.dueDate
+      ? `Exact deadline ${requirement.dueDate.slice(0, 10)}`
+      : "Exact deadline not set";
+  }
+
+  const days = requirement.dueOffsetDays;
+
+  if (typeof days !== "number") {
+    return requirement.dueDate ? requirement.dueDate.slice(0, 10) : "No deadline";
+  }
+
+  if (requirement.dueAnchor === "before_event") {
+    return `${days} day${days === 1 ? "" : "s"} before event`;
+  }
+
+  if (requirement.dueAnchor === "after_fight_scheduled") {
+    return `${days} day${days === 1 ? "" : "s"} after fight scheduling`;
+  }
+
+  if (requirement.dueAnchor === "after_invite_accepted") {
+    return `${days} day${days === 1 ? "" : "s"} after invite acceptance`;
+  }
+
+  return `${days} day${days === 1 ? "" : "s"} after agreement approval`;
 }
 
 function capitalize(value: string) {
@@ -507,6 +679,42 @@ function ArrowLeftIcon({ className }: { className?: string }) {
     >
       <path d="m15 18-6-6 6-6" />
       <path d="M9 12h11" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   );
 }

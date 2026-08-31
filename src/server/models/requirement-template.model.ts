@@ -33,6 +33,49 @@ const structuredFieldSchema = new Schema(
   },
 );
 
+const documentBlockSchema = new Schema(
+  {
+    key: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    required: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
+    acceptedFileTypes: {
+      type: [String],
+      default: [],
+      required: true,
+    },
+    humanVerificationRequired: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    sortOrder: {
+      type: Number,
+      default: 0,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
 const requirementTemplateSchema = new Schema(
   {
     ownerUserId: {
@@ -77,9 +120,31 @@ const requirementTemplateSchema = new Schema(
       type: Number,
       default: null,
     },
+    dueAnchor: {
+      type: String,
+      enum: [
+        "custom_date",
+        "before_event",
+        "after_fight_scheduled",
+        "after_invite_accepted",
+        "after_signed_agreement_approved",
+      ],
+      default: "before_event",
+      required: true,
+    },
+    dueOffsetDays: {
+      type: Number,
+      default: null,
+    },
     reminderEnabled: {
       type: Boolean,
       default: false,
+      required: true,
+    },
+    reminderCadence: {
+      type: String,
+      enum: ["daily_until_resolved", "once_before_due", "off"],
+      default: "daily_until_resolved",
       required: true,
     },
     reminderDaysBeforeDue: {
@@ -99,6 +164,11 @@ const requirementTemplateSchema = new Schema(
     },
     structuredFields: {
       type: [structuredFieldSchema],
+      default: [],
+      required: true,
+    },
+    documentBlocks: {
+      type: [documentBlockSchema],
       default: [],
       required: true,
     },

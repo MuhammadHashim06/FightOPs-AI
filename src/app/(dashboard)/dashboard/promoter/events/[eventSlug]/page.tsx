@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 
 import { PromoterEventDetails } from "@/features/dashboard/components/promoter-event-details";
-import { getPromoterEventBySlug } from "@/features/dashboard/data/promoter-events";
 import { getPromoterEventDetailsBySlug } from "@/server/services/events.service";
 
 type EventDetailsPageProps = {
@@ -14,8 +13,7 @@ export default async function EventDetailsPage({
   params,
 }: EventDetailsPageProps) {
   const { eventSlug } = await params;
-  const event =
-    (await getPromoterEventDetailsBySlug(eventSlug)) ?? getPromoterEventBySlug(eventSlug);
+  const event = await getPromoterEventDetailsBySlug(eventSlug);
 
   if (!event) {
     notFound();

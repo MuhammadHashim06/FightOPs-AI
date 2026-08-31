@@ -2,12 +2,12 @@ import Link from "next/link";
 
 import { DeleteEventButton } from "@/features/dashboard/components/delete-event-button";
 import { FightHeroCard } from "@/features/dashboard/components/fight-hero-card";
-import type { PromoterEventDetail } from "@/features/dashboard/data/promoter-events";
+import type { DashboardEventDetail } from "@/server/services/events.service";
 
 export function PromoterEventDetails({
   event,
 }: {
-  event: PromoterEventDetail;
+  event: DashboardEventDetail;
 }) {
   return (
     <main className="space-y-5 pb-2">
@@ -56,9 +56,7 @@ export function PromoterEventDetails({
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {event.id ? (
-            <DeleteEventButton eventId={event.id} eventName={event.name} />
-          ) : null}
+          <DeleteEventButton eventId={event.id} eventName={event.name} />
           <Link
             href={`/dashboard/promoter/events/${event.slug}/requirements`}
             className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
@@ -69,8 +67,8 @@ export function PromoterEventDetails({
             href={`/dashboard/promoter/events/${event.slug}/edit-fight-card`}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
           >
-            <EditIcon className="h-4 w-4" />
-            <span>Edit Card</span>
+            <SortIcon className="h-4 w-4" />
+            <span>Reorder Card</span>
           </Link>
           <Link
             href={`/dashboard/promoter/events/${event.slug}/add-fight`}
@@ -93,13 +91,27 @@ export function PromoterEventDetails({
 
       <div className="space-y-6">
         {event.bouts.map((bout) => (
-          <Link
+          <article
             key={bout.id}
-            href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}`}
-            className="block transition hover:-translate-y-0.5"
+            className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]"
           >
             <FightHeroCard bout={bout} />
-          </Link>
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-5 py-4">
+              <Link
+                href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}`}
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+              >
+                Open details
+              </Link>
+              <Link
+                href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}/edit`}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong"
+              >
+                <EditIcon className="h-4 w-4" />
+                <span>Edit Fight</span>
+              </Link>
+            </div>
+          </article>
         ))}
 
         {event.bouts.length === 0 ? (
@@ -291,6 +303,25 @@ function EditIcon({ className }: { className?: string }) {
     >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" />
+    </svg>
+  );
+}
+
+function SortIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 6h10" />
+      <path d="M6 12h14" />
+      <path d="M3 18h17" />
     </svg>
   );
 }

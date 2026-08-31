@@ -1,8 +1,11 @@
 import type {
   CreateEventRequirementInput,
   CreateRequirementTemplateInput,
+  RequirementDocumentBlock,
   RequirementStructuredField,
   RequirementPriority,
+  RequirementDueAnchor,
+  RequirementReminderCadence,
 } from "@/types/readiness";
 
 const requirementPriorities: RequirementPriority[] = [
@@ -20,6 +23,20 @@ const inputTypes = [
   "choice",
   "confirmation",
 ] as const;
+
+const dueAnchors: RequirementDueAnchor[] = [
+  "custom_date",
+  "before_event",
+  "after_fight_scheduled",
+  "after_invite_accepted",
+  "after_signed_agreement_approved",
+];
+
+const reminderCadences: RequirementReminderCadence[] = [
+  "daily_until_resolved",
+  "once_before_due",
+  "off",
+];
 
 export function validateCreateEventRequirementInput(
   input: CreateEventRequirementInput,
@@ -48,12 +65,35 @@ export function validateCreateEventRequirementInput(
     }
   }
 
+  if (input.dueAnchor === "custom_date" && !input.dueDate?.trim()) {
+    throw new Error("Exact deadline is required for custom date requirements.");
+  }
+
   if (typeof input.sortOrder !== "undefined" && input.sortOrder < 0) {
     throw new Error("Requirement sort order must be zero or greater.");
   }
 
+  if (typeof input.dueAnchor !== "undefined" && !dueAnchors.includes(input.dueAnchor)) {
+    throw new Error("A valid requirement due timing is required.");
+  }
+
+  if (typeof input.dueOffsetDays !== "undefined" && input.dueOffsetDays < 0) {
+    throw new Error("Due offset days must be zero or greater.");
+  }
+
+  if (
+    typeof input.reminderCadence !== "undefined" &&
+    !reminderCadences.includes(input.reminderCadence)
+  ) {
+    throw new Error("A valid reminder cadence is required.");
+  }
+
   if (Array.isArray(input.structuredFields)) {
     validateStructuredFields(input.structuredFields);
+  }
+
+  if (Array.isArray(input.documentBlocks)) {
+    validateDocumentBlocks(input.documentBlocks);
   }
 }
 
@@ -68,11 +108,14 @@ export function validateCreateRequirementTemplateInput(
     required: input.required,
     priority: input.priority,
     reminderEnabled: input.reminderEnabled,
+    reminderCadence: input.reminderCadence,
     reminderDaysBeforeDue: input.reminderDaysBeforeDue,
     humanVerificationRequired: input.humanVerificationRequired,
     isSignedAgreement: input.isSignedAgreement,
     acceptedFileTypes: input.acceptedFileTypes,
     sortOrder: input.sortOrder,
+    dueAnchor: input.dueAnchor,
+    dueOffsetDays: input.dueOffsetDays,
   });
 
   if (
@@ -98,6 +141,22 @@ function validateStructuredFields(fields: RequirementStructuredField[]) {
 
     if (!field.label.trim()) {
       throw new Error("Structured field label is required.");
+    }
+  }
+}
+
+function validateDocumentBlocks(blocks: RequirementDocumentBlock[]) {
+  for (const block of blocks) {
+    if (!block.key.trim()) {
+      throw new Error("Document block key is required.");
+    }
+
+    if (!block.title.trim()) {
+      throw new Error("Document block title is required.");
+    }
+
+    if (block.sortOrder < 0) {
+      throw new Error("Document block sort order must be zero or greater.");
     }
   }
 }

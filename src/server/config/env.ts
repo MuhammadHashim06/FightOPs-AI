@@ -13,6 +13,9 @@ export const env = {
   authRefreshTokenExpiresInDays: Number(
     process.env.AUTH_REFRESH_TOKEN_EXPIRES_IN_DAYS ?? "30",
   ),
+  authFighterInviteExpiresInDays: Number(
+    process.env.AUTH_FIGHTER_INVITE_EXPIRES_IN_DAYS ?? "7",
+  ),
   databaseUrl: process.env.DATABASE_URL ?? "",
   databaseName: process.env.DATABASE_NAME ?? "fightops",
   smtpHost: process.env.SMTP_HOST ?? "",
@@ -21,4 +24,11 @@ export const env = {
   smtpUser: process.env.SMTP_USER ?? "",
   smtpPass: process.env.SMTP_PASS ?? "",
   emailFrom: process.env.EMAIL_FROM ?? "no-reply@fightops.ai",
+  storageProvider: process.env.STORAGE_PROVIDER ?? "local",
+  localUploadDir: process.env.LOCAL_UPLOAD_DIR ?? "storage/uploads",
+  r2AccountId: process.env.R2_ACCOUNT_ID ?? "",
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  r2BucketName: process.env.R2_BUCKET_NAME ?? "",
+  r2PublicBaseUrl: process.env.R2_PUBLIC_BASE_URL ?? "",
 };

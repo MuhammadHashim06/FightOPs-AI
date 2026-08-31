@@ -7,6 +7,15 @@ import { connectToDatabase } from "@/server/db/mongoose";
 import { FighterRequirementMongoModel } from "@/server/models/fighter-requirement.model";
 
 export const fighterRequirementsRepository = {
+  async findById(fighterRequirementId: string) {
+    await connectToDatabase();
+
+    const requirement = await FighterRequirementMongoModel.findById(
+      fighterRequirementId,
+    ).lean();
+
+    return requirement ? mapFighterRequirement(requirement) : null;
+  },
   async listByEventId(eventId: string) {
     await connectToDatabase();
 
@@ -35,6 +44,7 @@ export const fighterRequirementsRepository = {
     fighterId: string;
     fightId: string | null;
     eventRequirements: EventRequirementRecord[];
+    dueDateByRequirementId?: Map<string, string | null>;
   }) {
     await connectToDatabase();
 
@@ -54,7 +64,9 @@ export const fighterRequirementsRepository = {
             status: "WAITING",
             required: requirement.required,
             priority: requirement.priority,
-            dueDate: requirement.dueDate,
+            dueDate:
+              params.dueDateByRequirementId?.get(requirement.id) ??
+              requirement.dueDate,
             humanVerificationRequired: requirement.humanVerificationRequired,
             overrideReason: null,
             aiConfidence: null,
@@ -77,6 +89,7 @@ export const fighterRequirementsRepository = {
     overrideReason?: string | null;
     aiConfidence?: number | null;
     aiReason?: string | null;
+    latestSubmissionId?: string | null;
   }) {
     await connectToDatabase();
 
@@ -87,15 +100,68 @@ export const fighterRequirementsRepository = {
         overrideReason: params.overrideReason ?? null,
         aiConfidence: params.aiConfidence ?? null,
         aiReason: params.aiReason ?? null,
+        ...(typeof params.latestSubmissionId !== "undefined"
+          ? { latestSubmissionId: params.latestSubmissionId }
+          : {}),
         completedAt:
           params.status === "ACCEPTED" || params.status === "NOT_APPLICABLE"
             ? new Date()
             : null,
       },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
 
     return requirement ? mapFighterRequirement(requirement) : null;
+  },
+  async updateDueDatesForFighter(params: {
+    eventId: string;
+    fighterId: string;
+    dueDateByRequirementId: Map<string, string | null>;
+  }) {
+    await connectToDatabase();
+
+    const operations = Array.from(params.dueDateByRequirementId.entries()).map(
+      ([eventRequirementId, dueDate]) => ({
+        updateOne: {
+          filter: {
+            eventId: params.eventId,
+            fighterId: params.fighterId,
+            eventRequirementId,
+          },
+          update: {
+            $set: {
+              dueDate,
+            },
+          },
+        },
+      }),
+    );
+
+    if (operations.length === 0) {
+      return 0;
+    }
+
+    const result = await FighterRequirementMongoModel.bulkWrite(operations, {
+      ordered: false,
+    });
+
+    return result.modifiedCount ?? 0;
+  },
+  async deleteByFightId(fightId: string) {
+    await connectToDatabase();
+
+    const result = await FighterRequirementMongoModel.deleteMany({ fightId });
+    return result.deletedCount ?? 0;
+  },
+  async deleteByEventAndFighter(eventId: string, fighterId: string) {
+    await connectToDatabase();
+
+    const result = await FighterRequirementMongoModel.deleteMany({
+      eventId,
+      fighterId,
+    });
+
+    return result.deletedCount ?? 0;
   },
 };
 

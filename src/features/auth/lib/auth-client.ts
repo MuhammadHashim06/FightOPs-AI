@@ -5,6 +5,7 @@ import type { SafeAuthUser } from "@/types/auth";
 
 type AuthStatus =
   | "authenticated"
+  | "invite_accepted"
   | "verification_required"
   | "verified"
   | "verification_resent"

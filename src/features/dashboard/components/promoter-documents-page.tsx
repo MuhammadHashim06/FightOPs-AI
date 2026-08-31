@@ -1,59 +1,156 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
-import {
-  documentCategories,
-  documentEventFilters,
-  documentStorageFiles,
-} from "@/features/dashboard/data/promoter-events";
+import { useToast } from "@/providers/toast-provider";
+import type { DocumentReviewQueueItem } from "@/server/services/document-submissions.service";
+import type { ApiResponse } from "@/types/api";
 
-export function PromoterDocumentsPage() {
+type PromoterDocumentsPageProps = {
+  reviewQueue: DocumentReviewQueueItem[];
+  scopeLabel?: string;
+};
+
+export function PromoterDocumentsPage({
+  reviewQueue,
+  scopeLabel = "Events",
+}: PromoterDocumentsPageProps) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [categorySearch, setCategorySearch] = useState("");
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Files");
   const [activeEvent, setActiveEvent] = useState("all-events");
+  const [busySubmissionId, setBusySubmissionId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const normalizedCategorySearch = categorySearch.trim().toLowerCase();
   const normalizedDocumentSearch = documentSearch.trim().toLowerCase();
+  const isBusy = isPending || Boolean(busySubmissionId);
 
-  const visibleCategories = documentCategories.filter((item) =>
+  const eventFilters = useMemo(() => {
+    const events = new Map<string, string>();
+
+    for (const item of reviewQueue) {
+      events.set(item.eventId, item.eventName);
+    }
+
+    return [
+      { label: `All ${scopeLabel}`, value: "all-events" },
+      ...Array.from(events.entries()).map(([value, label]) => ({ label, value })),
+    ];
+  }, [reviewQueue, scopeLabel]);
+
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const item of reviewQueue) {
+      counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+    }
+
+    return [
+      { label: "All Files", count: reviewQueue.length },
+      ...Array.from(counts.entries()).map(([label, count]) => ({ label, count })),
+    ];
+  }, [reviewQueue]);
+
+  const visibleCategories = categories.filter((item) =>
     item.label.toLowerCase().includes(normalizedCategorySearch),
   );
 
-  const filteredFiles = documentStorageFiles.filter((file) => {
+  const filteredDocuments = reviewQueue.filter((file) => {
     const matchesCategory =
       activeCategory === "All Files" || file.category === activeCategory;
     const matchesEvent =
-      activeEvent === "all-events" || file.event === activeEvent;
+      activeEvent === "all-events" || file.eventId === activeEvent;
     const matchesSearch =
       !normalizedDocumentSearch ||
-      file.name.toLowerCase().includes(normalizedDocumentSearch) ||
-      file.owner.toLowerCase().includes(normalizedDocumentSearch) ||
+      file.fileName.toLowerCase().includes(normalizedDocumentSearch) ||
+      file.fighterName.toLowerCase().includes(normalizedDocumentSearch) ||
+      file.requirementName.toLowerCase().includes(normalizedDocumentSearch) ||
+      file.eventName.toLowerCase().includes(normalizedDocumentSearch) ||
       file.category.toLowerCase().includes(normalizedDocumentSearch);
 
     return matchesCategory && matchesEvent && matchesSearch;
   });
+
+  async function handleDecision(
+    submissionId: string,
+    decision: "accept" | "reject",
+  ) {
+    const note =
+      decision === "reject"
+        ? window.prompt("Add a short reason for resubmission.")
+        : null;
+
+    if (decision === "reject" && note === null) {
+      return;
+    }
+
+    setBusySubmissionId(submissionId);
+
+    try {
+      const response = await fetch(
+        `/api/v1/document-submissions/${submissionId}/decision`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ decision, note }),
+        },
+      );
+      const payload = (await response.json()) as ApiResponse<unknown>;
+
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.success ? "Unable to review document." : payload.error.message,
+        );
+      }
+
+      showToast({
+        title:
+          decision === "accept"
+            ? "Document accepted."
+            : "Document rejected and marked for resubmission.",
+        variant: "success",
+      });
+      startTransition(() => router.refresh());
+    } catch (error) {
+      showToast({
+        title:
+          error instanceof Error ? error.message : "Unable to review document.",
+        variant: "error",
+      });
+    } finally {
+      setBusySubmissionId(null);
+    }
+  }
 
   return (
     <main className="space-y-5">
       <div className="flex flex-col gap-4 py-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
-            Document Storage
+            Document Review
           </h1>
           <p className="text-lg text-text-body">
-            Search, organize, and review uploaded files across your events.
+            Review fighter uploads, approve completed documents, and request fixes.
           </p>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,107,255,0.24)] transition hover:bg-brand-strong"
-        >
-          <UploadIcon className="h-4 w-4" />
-          <span>Upload Files</span>
-        </button>
+        <div className="rounded-[16px] border border-border-subtle bg-panel px-4 py-3 text-right">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Pending review
+          </p>
+          <p className="mt-1 text-[28px] font-semibold text-text-strong">
+            {
+              reviewQueue.filter((item) => item.status === "PENDING_REVIEW")
+                .length
+            }
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
@@ -97,42 +194,21 @@ export function PromoterDocumentsPage() {
             })}
           </div>
 
-          <button
-            type="button"
-            className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-border-subtle bg-white text-[15px] font-medium text-brand transition hover:bg-panel-muted"
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span>Add Category</span>
-          </button>
-
-          <div className="mt-5 border-t border-border-subtle pt-5">
+          <div className="mt-5 rounded-[14px] bg-panel-muted p-4">
             <div className="flex items-center gap-2 text-[15px] font-medium text-text-body">
               <StorageIcon className="h-4 w-4 text-text-muted" />
-              <span>Storage Usage</span>
+              <span>Storage Provider</span>
             </div>
-
-            <div className="mt-3 flex items-end justify-between">
-              <p className="text-[28px] font-semibold text-text-strong">24.5 GB</p>
-              <p className="text-sm text-text-muted">of 100 GB</p>
-            </div>
-
-            <div className="mt-3 h-2 rounded-full bg-panel-muted">
-              <div className="h-2 w-[24.5%] rounded-full bg-brand" />
-            </div>
-
-            <button
-              type="button"
-              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[10px] border border-border-subtle bg-white text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              Upgrade Storage
-            </button>
+            <p className="mt-2 text-sm leading-6 text-text-muted">
+              Uploads are saved through the configured local/R2 storage layer.
+            </p>
           </div>
         </aside>
 
         <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
           <div className="border-b border-border-subtle px-4 pt-4">
             <div className="flex flex-wrap gap-6 px-2">
-              {documentEventFilters.map((filter) => {
+              {eventFilters.map((filter) => {
                 const isActive = activeEvent === filter.value;
 
                 return (
@@ -153,13 +229,13 @@ export function PromoterDocumentsPage() {
             </div>
 
             <div className="py-4">
-              <div className="flex h-10 max-w-[386px] items-center gap-3 rounded-[10px] border border-border-subtle bg-white px-3 text-text-muted">
+              <div className="flex h-10 max-w-[440px] items-center gap-3 rounded-[10px] border border-border-subtle bg-white px-3 text-text-muted">
                 <SearchIcon className="h-4 w-4" />
                 <input
                   type="text"
                   value={documentSearch}
                   onChange={(event) => setDocumentSearch(event.target.value)}
-                  placeholder="Search documents..."
+                  placeholder="Search documents, fighter, event..."
                   className="w-full bg-transparent text-[15px] text-text-strong outline-none placeholder:text-text-muted"
                 />
               </div>
@@ -167,76 +243,103 @@ export function PromoterDocumentsPage() {
           </div>
 
           <div className="divide-y divide-border-subtle">
-            {filteredFiles.map((file) => (
+            {filteredDocuments.map((file) => (
               <article
                 key={file.id}
-                className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between"
+                className="grid gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto] xl:items-center"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="relative mt-1 flex h-7 w-7 shrink-0 items-center justify-center text-text-muted">
                     <DocumentIcon className="h-5 w-5" />
-                    <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-success" />
+                    <span
+                      className={`absolute right-0 top-0 h-2.5 w-2.5 rounded-full ${statusDotClassName(file.status)}`}
+                    />
                   </div>
 
                   <div className="min-w-0">
                     <p className="truncate text-[18px] font-medium text-text-strong">
-                      {file.name}
+                      {file.fileName}
                     </p>
                     <p className="mt-1 text-[15px] text-text-muted">
-                      {file.size} - Uploaded {file.uploadedAt} - {file.owner}
+                      {file.fileSizeLabel} - Uploaded {file.uploadedAtLabel}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 self-end md:self-auto">
-                  <span className="inline-flex rounded-[10px] bg-panel-muted px-3 py-1 text-sm font-medium text-text-body">
-                    {file.category}
-                  </span>
+                <div className="grid gap-1 text-[15px] text-text-body">
+                  <p>
+                    <span className="text-text-muted">Event:</span> {file.eventName}
+                  </p>
+                  <p>
+                    <span className="text-text-muted">Fighter:</span>{" "}
+                    {file.fighterName}
+                  </p>
+                  <p>
+                    <span className="text-text-muted">Requirement:</span>{" "}
+                    {file.requirementName}
+                  </p>
+                </div>
 
-                  <button
-                    type="button"
-                    className="text-text-body transition hover:text-brand"
-                    aria-label={`Download ${file.name}`}
-                  >
-                    <DownloadIcon className="h-5 w-5" />
-                  </button>
+                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                  <StatusPill status={file.status} label={file.statusLabel} />
+                  <PriorityPill tone={file.priority} />
 
-                  <button
-                    type="button"
-                    className="text-danger transition hover:opacity-80"
-                    aria-label={`Delete ${file.name}`}
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
+                  {file.publicUrl ? (
+                    <a
+                      href={file.publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-3 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                    >
+                      Open
+                    </a>
+                  ) : (
+                    <span className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel-muted px-3 text-sm font-medium text-text-muted">
+                      Stored
+                    </span>
+                  )}
+
+                  {file.status === "PENDING_REVIEW" ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => handleDecision(file.id, "accept")}
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-success px-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => handleDecision(file.id, "reject")}
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-danger px-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             ))}
 
-            {filteredFiles.length === 0 ? (
-              <div className="px-5 py-12 text-center">
+            {filteredDocuments.length === 0 ? (
+              <div className="px-5 py-14 text-center">
                 <p className="text-[18px] font-medium text-text-strong">
                   No documents found
                 </p>
                 <p className="mt-2 text-[15px] text-text-body">
-                  Try another event, category, or search term.
+                  Uploads from fighters will appear here for approval.
                 </p>
               </div>
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-4 border-t border-border-subtle px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="border-t border-border-subtle px-4 py-4">
             <p className="text-[15px] text-text-muted">
-              Showing 1-10 of 42 documents
+              Showing {filteredDocuments.length} of {reviewQueue.length} document
+              {reviewQueue.length === 1 ? "" : "s"}
             </p>
-
-            <div className="flex items-center gap-2 self-end">
-              <PaginationButton label="Prev" muted />
-              <PaginationButton label="1" active />
-              <PaginationButton label="2" />
-              <PaginationButton label="3" />
-              <span className="px-1 text-text-muted">...</span>
-              <PaginationButton label="Next" />
-            </div>
           </div>
         </section>
       </div>
@@ -244,29 +347,58 @@ export function PromoterDocumentsPage() {
   );
 }
 
-function PaginationButton({
+function StatusPill({
+  status,
   label,
-  active,
-  muted,
 }: {
+  status: DocumentReviewQueueItem["status"];
   label: string;
-  active?: boolean;
-  muted?: boolean;
 }) {
+  const styles =
+    status === "ACCEPTED"
+      ? "border-[#b7ead1] bg-[#ecfbf2] text-success"
+      : status === "REJECTED"
+        ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+        : "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]";
+
   return (
-    <button
-      type="button"
-      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-[8px] border px-3 text-sm font-medium transition ${
-        active
-          ? "border-brand bg-brand text-white"
-          : muted
-            ? "border-border-subtle bg-white text-text-muted"
-            : "border-border-subtle bg-white text-text-strong hover:bg-panel-muted"
-      }`}
-    >
+    <span className={`inline-flex rounded-[10px] border px-3 py-1 text-sm font-medium ${styles}`}>
       {label}
-    </button>
+    </span>
   );
+}
+
+function PriorityPill({
+  tone,
+}: {
+  tone: DocumentReviewQueueItem["priority"];
+}) {
+  const styles =
+    tone === "critical"
+      ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+      : tone === "high"
+        ? "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]"
+        : tone === "medium"
+          ? "border-[#c9d9ff] bg-[#edf3ff] text-brand"
+          : "border-border-subtle bg-panel-muted text-text-body";
+
+  return (
+    <span className={`inline-flex rounded-[10px] border px-3 py-1 text-sm font-medium capitalize ${styles}`}>
+      {tone}
+    </span>
+  );
+}
+
+function statusDotClassName(status: DocumentReviewQueueItem["status"]) {
+  if (status === "ACCEPTED") {
+    return "bg-success";
+  }
+
+  if (status === "REJECTED") {
+    return "bg-danger";
+  }
+
+  return "bg-warning";
 }
 
 function SearchIcon({ className }: { className?: string }) {
@@ -283,43 +415,6 @@ function SearchIcon({ className }: { className?: string }) {
     >
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
-    </svg>
-  );
-}
-
-function UploadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 16V5" />
-      <path d="m7 10 5-5 5 5" />
-      <path d="M5 19h14" />
-    </svg>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
     </svg>
   );
 }
@@ -359,46 +454,6 @@ function DocumentIcon({ className }: { className?: string }) {
       <path d="M14 3v6h6" />
       <path d="M10 13h6" />
       <path d="M10 17h6" />
-    </svg>
-  );
-}
-
-function DownloadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 4v11" />
-      <path d="m7 10 5 5 5-5" />
-      <path d="M5 20h14" />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
     </svg>
   );
 }

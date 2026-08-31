@@ -48,12 +48,28 @@ export const fighterReadinessRepository = {
         nextAction: params.nextAction,
       },
       {
-        new: true,
+        returnDocument: "after",
         upsert: true,
       },
     ).lean();
 
     return mapFighterReadiness(readiness);
+  },
+  async deleteByFightId(fightId: string) {
+    await connectToDatabase();
+
+    const result = await FighterEventReadinessMongoModel.deleteMany({ fightId });
+    return result.deletedCount ?? 0;
+  },
+  async deleteByEventAndFighter(eventId: string, fighterId: string) {
+    await connectToDatabase();
+
+    const result = await FighterEventReadinessMongoModel.deleteMany({
+      eventId,
+      fighterId,
+    });
+
+    return result.deletedCount ?? 0;
   },
 };
 

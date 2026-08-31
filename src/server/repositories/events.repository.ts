@@ -72,7 +72,7 @@ export const eventsRepository = {
     }
 
     const event = await EventMongoModel.findByIdAndUpdate(eventId, updatePayload, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }).lean();
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { EditFightCardPage } from "@/features/dashboard/components/edit-fight-card-page";
-import { getPromoterEventBySlug } from "@/features/dashboard/data/promoter-events";
+import { getPromoterEventDetailsBySlug } from "@/server/services/events.service";
 
 type EditFightCardRouteProps = {
   params: Promise<{
@@ -13,11 +13,11 @@ export default async function EditFightCardRoute({
   params,
 }: EditFightCardRouteProps) {
   const { eventSlug } = await params;
-  const event = getPromoterEventBySlug(eventSlug);
+  const event = await getPromoterEventDetailsBySlug(eventSlug);
 
   if (!event) {
     notFound();
   }
 
-  return <EditFightCardPage eventSlug={eventSlug} />;
+  return <EditFightCardPage eventSlug={eventSlug} rows={event.bouts} />;
 }

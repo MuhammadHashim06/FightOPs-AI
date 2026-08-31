@@ -1,9 +1,9 @@
-import type { PromoterBout, PromoterFighter } from "@/features/dashboard/data/promoter-events";
+import type { DashboardEventDetail } from "@/server/services/events.service";
 
 export function FightHeroCard({
   bout,
 }: {
-  bout: PromoterBout;
+  bout: DashboardEventDetail["bouts"][number];
 }) {
   return (
     <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
@@ -48,7 +48,7 @@ function FighterPanel({
   fighter,
   side,
 }: {
-  fighter: PromoterFighter;
+  fighter: DashboardEventDetail["bouts"][number]["leftFighter"];
   side: "left" | "right";
 }) {
   const progressTone =
@@ -67,7 +67,7 @@ function FighterPanel({
       <div className={side === "right" ? "order-1" : ""}>
         <h3 className="text-[18px] font-semibold text-text-strong">{fighter.name}</h3>
         <p className="mt-1 text-[15px] text-text-body">
-          {fighter.division} · {fighter.country} · {fighter.stance}
+          {fighter.division} - {fighter.country} - {fighter.stance}
         </p>
         <div
           className={`mt-4 h-1.5 overflow-hidden rounded-full bg-panel-strong ${

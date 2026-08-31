@@ -1,4 +1,5 @@
 import type {
+  AcceptFighterInviteInput,
   ForgotPasswordInput,
   LoginInput,
   ResendVerificationInput,
@@ -45,6 +46,15 @@ export function validateVerifyEmailInput(input: VerifyEmailInput) {
 
 export function validateResendVerificationInput(input: ResendVerificationInput) {
   assertEmail(input.email);
+}
+
+export function validateAcceptFighterInviteInput(input: AcceptFighterInviteInput) {
+  assertRequired(input.token, "Invite token is required.");
+  assertPassword(input.password ?? "");
+
+  if ((input.password ?? "") !== (input.confirmPassword ?? "")) {
+    throw new Error("Passwords do not match.");
+  }
 }
 
 function assertEmail(email: string) {

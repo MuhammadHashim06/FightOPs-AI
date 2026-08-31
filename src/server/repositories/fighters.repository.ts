@@ -10,6 +10,7 @@ export const fightersRepository = {
     managerEmail: string;
     managerPhone?: string;
     division?: string;
+    contractReference?: string;
   }) {
     await connectToDatabase();
 
@@ -19,9 +20,43 @@ export const fightersRepository = {
       managerName: normalizeOptionalText(input.managerName),
       managerEmail: normalizeOptionalText(input.managerEmail),
       managerPhone: normalizeOptionalText(input.managerPhone),
+      contractReference: normalizeOptionalText(input.contractReference),
+      inviteStatus: "pending",
+      inviteSentAt: null,
+      inviteAcceptedAt: null,
     });
 
     return mapFighter(fighter.toObject());
+  },
+  async updateFighter(input: FighterRecord) {
+    await connectToDatabase();
+
+    const fighter = await FighterMongoModel.findByIdAndUpdate(
+      input.id,
+      {
+        userId: input.userId,
+        fullName: input.fullName,
+        nationality: normalizeOptionalText(input.nationality ?? undefined),
+        stance: normalizeOptionalText(input.stance ?? undefined),
+        division: normalizeOptionalText(input.division ?? undefined),
+        managerName: normalizeOptionalText(input.managerName ?? undefined),
+        managerEmail: normalizeOptionalText(input.managerEmail ?? undefined),
+        managerPhone: normalizeOptionalText(input.managerPhone ?? undefined),
+        photoUrl: normalizeOptionalText(input.photoUrl ?? undefined),
+        contractReference: normalizeOptionalText(input.contractReference ?? undefined),
+        inviteStatus: input.inviteStatus,
+        inviteSentAt: toDate(input.inviteSentAt),
+        inviteAcceptedAt: toDate(input.inviteAcceptedAt),
+        updatedAt: toDate(input.updatedAt),
+      },
+      { returnDocument: "after" },
+    ).lean();
+
+    if (!fighter) {
+      throw new Error("Fighter was not found.");
+    }
+
+    return mapFighter(fighter);
   },
   async listEventFighterLinks(eventId: string) {
     await connectToDatabase();
@@ -74,10 +109,29 @@ export const fightersRepository = {
     return this.listFightersByIds(fighterIds);
   },
   async findFighterById(fighterId: string) {
+    if (!fighterId?.trim()) {
+      return null;
+    }
+
     await connectToDatabase();
 
     const fighter = await FighterMongoModel.findById(fighterId).lean();
     return fighter ? mapFighter(fighter) : null;
+  },
+  async findFighterByUserId(userId: string) {
+    await connectToDatabase();
+
+    const fighter = await FighterMongoModel.findOne({ userId }).lean();
+    return fighter ? mapFighter(fighter) : null;
+  },
+  async listFightersByAccount(input: { userId: string; email: string }) {
+    await connectToDatabase();
+
+    const fighters = await FighterMongoModel.find({
+      $or: [{ userId: input.userId }, { managerEmail: input.email.toLowerCase() }],
+    }).lean();
+
+    return fighters.map(mapFighter);
   },
 };
 
@@ -88,6 +142,7 @@ function normalizeOptionalText(value: string | undefined) {
 
 function mapFighter(fighter: {
   _id: { toString(): string };
+  userId: { toString(): string } | null;
   fullName: string;
   nationality: string | null;
   stance: string | null;
@@ -96,11 +151,16 @@ function mapFighter(fighter: {
   managerEmail: string | null;
   managerPhone: string | null;
   photoUrl: string | null;
+  contractReference: string | null;
+  inviteStatus: "pending" | "accepted";
+  inviteSentAt: Date | null;
+  inviteAcceptedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): FighterRecord {
   return {
     id: fighter._id.toString(),
+    userId: fighter.userId ? fighter.userId.toString() : null,
     fullName: fighter.fullName,
     nationality: fighter.nationality ?? null,
     stance: fighter.stance ?? null,
@@ -109,7 +169,19 @@ function mapFighter(fighter: {
     managerEmail: fighter.managerEmail ?? null,
     managerPhone: fighter.managerPhone ?? null,
     photoUrl: fighter.photoUrl ?? null,
+    contractReference: fighter.contractReference ?? null,
+    inviteStatus: fighter.inviteStatus,
+    inviteSentAt: toIso(fighter.inviteSentAt),
+    inviteAcceptedAt: toIso(fighter.inviteAcceptedAt),
     createdAt: fighter.createdAt.toISOString(),
     updatedAt: fighter.updatedAt.toISOString(),
   };
+}
+
+function toDate(value: string | null) {
+  return value ? new Date(value) : null;
+}
+
+function toIso(value: Date | null) {
+  return value ? value.toISOString() : null;
 }

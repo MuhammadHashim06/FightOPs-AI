@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { FightDetailsPage } from "@/features/dashboard/components/fight-details-page";
-import { getPromoterEventBySlug, getPromoterFightById } from "@/features/dashboard/data/promoter-events";
+import { getPromoterFightDetailBySlugAndId } from "@/server/services/events.service";
 
 type FightDetailsRouteProps = {
   params: Promise<{
@@ -14,10 +14,9 @@ export default async function FightDetailsRoute({
   params,
 }: FightDetailsRouteProps) {
   const { eventSlug, fightId } = await params;
-  const event = getPromoterEventBySlug(eventSlug);
-  const fight = getPromoterFightById(fightId);
+  const fight = await getPromoterFightDetailBySlugAndId(eventSlug, fightId);
 
-  if (!event || !fight || fight.eventSlug !== eventSlug) {
+  if (!fight) {
     notFound();
   }
 

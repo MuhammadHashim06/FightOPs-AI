@@ -12,6 +12,18 @@ export const reminderLogsRepository = {
 
     return logs.map(mapReminderLog);
   },
+  async listByEventAndFighter(eventId: string, fighterId: string) {
+    await connectToDatabase();
+
+    const logs = await ReminderLogMongoModel.find({
+      eventId,
+      fighterId,
+    })
+      .sort({ scheduledFor: -1, createdAt: -1 })
+      .lean();
+
+    return logs.map(mapReminderLog);
+  },
   async upsertReminder(input: {
     eventId: string;
     fighterId: string;
@@ -55,7 +67,7 @@ export const reminderLogsRepository = {
       },
       {
         upsert: true,
-        new: true,
+        returnDocument: "after",
       },
     ).lean();
 
@@ -92,10 +104,26 @@ export const reminderLogsRepository = {
         status,
         sentAt: status === "SENT" ? new Date() : null,
       },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
 
     return reminder ? mapReminderLog(reminder) : null;
+  },
+  async deleteByFightId(fightId: string) {
+    await connectToDatabase();
+
+    const result = await ReminderLogMongoModel.deleteMany({ fightId });
+    return result.deletedCount ?? 0;
+  },
+  async deleteByEventAndFighter(eventId: string, fighterId: string) {
+    await connectToDatabase();
+
+    const result = await ReminderLogMongoModel.deleteMany({
+      eventId,
+      fighterId,
+    });
+
+    return result.deletedCount ?? 0;
   },
 };
 

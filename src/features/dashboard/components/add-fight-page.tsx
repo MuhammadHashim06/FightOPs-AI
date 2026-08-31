@@ -17,12 +17,14 @@ export function AddFightPage({
   const router = useRouter();
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [contractReferences, setContractReferences] = useState({
+    fighterA: "",
+    fighterB: "",
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
-    setFormError(null);
 
     const formData = new FormData(event.currentTarget);
 
@@ -51,22 +53,8 @@ export function AddFightPage({
         },
         body: JSON.stringify({
           division: String(formData.get("division") ?? ""),
-          fighterA: {
-            fullName: String(formData.get("fighterA.fullName") ?? ""),
-            managerName: String(formData.get("fighterA.managerName") ?? ""),
-            managerEmail: String(formData.get("fighterA.managerEmail") ?? ""),
-            managerPhone: String(formData.get("fighterA.managerPhone") ?? ""),
-            division: String(formData.get("fighterA.division") ?? ""),
-            notes: String(formData.get("fighterA.notes") ?? ""),
-          },
-          fighterB: {
-            fullName: String(formData.get("fighterB.fullName") ?? ""),
-            managerName: String(formData.get("fighterB.managerName") ?? ""),
-            managerEmail: String(formData.get("fighterB.managerEmail") ?? ""),
-            managerPhone: String(formData.get("fighterB.managerPhone") ?? ""),
-            division: String(formData.get("fighterB.division") ?? ""),
-            notes: String(formData.get("fighterB.notes") ?? ""),
-          },
+          fighterA: buildFighterPayload(formData, "fighterA"),
+          fighterB: buildFighterPayload(formData, "fighterB"),
         }),
       });
 
@@ -88,7 +76,6 @@ export function AddFightPage({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to create fight.";
-      setFormError(message);
       showToast({
         title: message,
         variant: "error",
@@ -113,17 +100,11 @@ export function AddFightPage({
           Add Fight
         </h1>
         <p className="text-lg text-text-body">
-          Both fighters share the same bout. Contact info is required for the secure link.
+          Add both fighters now, one fighter now, or leave both slots open and fill them later.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-2">
-        {formError ? (
-          <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger xl:col-span-2">
-            {formError}
-          </div>
-        ) : null}
-
         <div className="xl:col-span-2">
           <FormField label="Fight division">
             <input
@@ -136,8 +117,28 @@ export function AddFightPage({
           </FormField>
         </div>
 
-        <FighterFormCard title="Fighter A" prefix="fighterA" />
-        <FighterFormCard title="Fighter B" prefix="fighterB" />
+        <FighterFormCard
+          title="Fighter A"
+          prefix="fighterA"
+          contractReference={contractReferences.fighterA}
+          onContractChange={(value) =>
+            setContractReferences((current) => ({
+              ...current,
+              fighterA: value,
+            }))
+          }
+        />
+        <FighterFormCard
+          title="Fighter B"
+          prefix="fighterB"
+          contractReference={contractReferences.fighterB}
+          onContractChange={(value) =>
+            setContractReferences((current) => ({
+              ...current,
+              fighterB: value,
+            }))
+          }
+        />
 
         <div className="flex justify-end gap-3 xl:col-span-2">
           <Link
@@ -162,9 +163,13 @@ export function AddFightPage({
 function FighterFormCard({
   title,
   prefix,
+  contractReference,
+  onContractChange,
 }: {
   title: string;
   prefix: "fighterA" | "fighterB";
+  contractReference: string;
+  onContractChange: (value: string) => void;
 }) {
   return (
     <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
@@ -173,6 +178,9 @@ function FighterFormCard({
           <UploadIcon className="h-5 w-5" />
         </div>
         <h2 className="text-[18px] font-semibold text-text-strong">{title}</h2>
+        <p className="text-center text-sm text-text-body">
+          Leave this section blank if you want to assign this slot later.
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -182,7 +190,6 @@ function FighterFormCard({
             type="text"
             placeholder="Full name"
             className={inputClassName}
-            required
           />
         </FormField>
         <FormField label="Manager / contact name">
@@ -191,7 +198,6 @@ function FighterFormCard({
             type="text"
             placeholder="Manager name"
             className={inputClassName}
-            required
           />
         </FormField>
         <div className="grid gap-4 md:grid-cols-2">
@@ -199,9 +205,8 @@ function FighterFormCard({
             <input
               name={`${prefix}.managerEmail`}
               type="email"
-              placeholder="email@example.com"
+              placeholder="contact@example.com"
               className={inputClassName}
-              required
             />
           </FormField>
           <FormField label="Phone (optional)">
@@ -223,6 +228,29 @@ function FighterFormCard({
         </FormField>
         <FormField label="Notes (optional)">
           <textarea name={`${prefix}.notes`} rows={4} className={textareaClassName} />
+        </FormField>
+        <FormField label="Contract (optional)">
+          <div className="space-y-3">
+            <label className="flex h-12 cursor-pointer items-center justify-center rounded-[12px] border border-dashed border-border-strong bg-panel-muted px-4 text-sm font-medium text-text-body transition hover:border-brand hover:text-text-strong">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="sr-only"
+                onChange={(event) =>
+                  onContractChange(event.target.files?.[0]?.name ?? "")
+                }
+              />
+              {contractReference ? "Replace contract file" : "Choose contract file"}
+            </label>
+            <input
+              name={`${prefix}.contractReference`}
+              type="text"
+              value={contractReference}
+              onChange={(event) => onContractChange(event.target.value)}
+              placeholder="Contract file or reference"
+              className={inputClassName}
+            />
+          </div>
         </FormField>
       </div>
     </section>
@@ -248,6 +276,25 @@ function FormField({
       {children}
     </label>
   );
+}
+
+function buildFighterPayload(
+  formData: FormData,
+  prefix: "fighterA" | "fighterB",
+) {
+  const payload = {
+    fullName: String(formData.get(`${prefix}.fullName`) ?? ""),
+    managerName: String(formData.get(`${prefix}.managerName`) ?? ""),
+    managerEmail: String(formData.get(`${prefix}.managerEmail`) ?? ""),
+    managerPhone: String(formData.get(`${prefix}.managerPhone`) ?? ""),
+    division: String(formData.get(`${prefix}.division`) ?? ""),
+    notes: String(formData.get(`${prefix}.notes`) ?? ""),
+    contractReference: String(formData.get(`${prefix}.contractReference`) ?? ""),
+  };
+
+  const hasAnyValue = Object.values(payload).some((value) => value.trim().length > 0);
+
+  return hasAnyValue ? payload : null;
 }
 
 function ArrowLeftIcon({ className }: { className?: string }) {

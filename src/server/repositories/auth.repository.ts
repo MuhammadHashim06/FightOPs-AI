@@ -80,7 +80,7 @@ export const authRepository: AuthRepository = {
         lastLoginAt: toDate(user.lastLoginAt),
         updatedAt: toDate(user.updatedAt),
       },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
 
     if (!updatedUser) {
