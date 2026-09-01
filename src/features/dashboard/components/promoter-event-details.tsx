@@ -89,6 +89,70 @@ export function PromoterEventDetails({
         />
       </section>
 
+      <section className="grid gap-5 rounded-[22px] bg-[#172846] p-5 text-white shadow-[0_18px_40px_rgba(23,40,70,0.18)] xl:grid-cols-[1fr_1.3fr_1fr]">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#8fa3c8]">
+            AI Operations
+          </p>
+          <h2 className="mt-2 text-[28px] font-semibold">
+            {event.aiOperations.overallReadinessPercent}% event ready
+          </h2>
+          <p className="mt-3 text-[15px] leading-6 text-[#c7d5ee]">
+            FightOps AI is monitoring this event, following up on routine work,
+            and surfacing only exceptional decisions.
+          </p>
+          <Link
+            href={`/dashboard/promoter/events/${event.slug}/readiness`}
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-[10px] border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15"
+          >
+            Open readiness view
+          </Link>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AiMetric
+            label="Completed by AI"
+            value={event.aiOperations.completedAutomatically}
+            tone="success"
+          />
+          <AiMetric
+            label="Currently handling"
+            value={event.aiOperations.activelyHandling}
+            tone="brand"
+          />
+          <AiMetric
+            label="Deadlines monitored"
+            value={event.aiOperations.monitoredDeadlines}
+            tone="warning"
+          />
+          <AiMetric
+            label="Human escalations"
+            value={event.aiOperations.escalatedIssues}
+            tone="danger"
+          />
+        </div>
+
+        <div className="rounded-[18px] border border-white/10 bg-white/8 p-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8fa3c8]">
+            Next follow-up
+          </p>
+          <p className="mt-3 text-[15px] leading-6 text-[#d8e4f7]">
+            {event.aiOperations.nextFollowUp}
+          </p>
+          <div className="mt-5 space-y-3">
+            {event.aiOperations.recentActivity.slice(0, 2).map((item) => (
+              <div key={item.id} className="flex gap-3">
+                <span className={`mt-2 h-2.5 w-2.5 rounded-full ${getAiDotClassName(item.tone)}`} />
+                <div>
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <p className="text-sm text-[#b9c8e3]">{item.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="space-y-6">
         {event.bouts.map((bout) => (
           <article
@@ -160,6 +224,52 @@ function ReadinessSummary({
   );
 }
 
+function AiMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "success" | "brand" | "warning" | "danger";
+}) {
+  const colorClassName =
+    tone === "success"
+      ? "text-[#5be49b]"
+      : tone === "brand"
+        ? "text-[#8fb1ff]"
+        : tone === "warning"
+          ? "text-[#f7ba45]"
+          : "text-[#ff8a8a]";
+
+  return (
+    <div className="rounded-[16px] border border-white/10 bg-white/8 px-4 py-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8fa3c8]">
+        {label}
+      </p>
+      <p className={`mt-2 text-[30px] font-semibold ${colorClassName}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function getAiDotClassName(tone: "success" | "brand" | "warning" | "danger") {
+  if (tone === "success") {
+    return "bg-[#5be49b]";
+  }
+
+  if (tone === "brand") {
+    return "bg-[#8fb1ff]";
+  }
+
+  if (tone === "danger") {
+    return "bg-[#ff8a8a]";
+  }
+
+  return "bg-[#f7ba45]";
+}
+
 function EventTab({
   children,
   href,
@@ -193,6 +303,14 @@ function EventTab({
 function getEventTabHref(eventSlug: string, tab: string) {
   if (tab === "Fight Card") {
     return `/dashboard/promoter/events/${eventSlug}`;
+  }
+
+  if (tab === "Fighters") {
+    return `/dashboard/promoter/events/${eventSlug}/fighters`;
+  }
+
+  if (tab === "Event Readiness") {
+    return `/dashboard/promoter/events/${eventSlug}/readiness`;
   }
 
   if (tab === "Required Documents") {

@@ -11,6 +11,7 @@ import { fightersRepository } from "@/server/repositories/fighters.repository";
 import { fighterReadinessRepository } from "@/server/repositories/fighter-readiness.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
 import { getFightById, getFightsByEventId } from "@/server/repositories/fights.repository";
+import { reminderLogsRepository } from "@/server/repositories/reminder-logs.repository";
 import { applyRequirementTemplatesToEvent } from "@/server/services/requirement-templates.service";
 import {
   validateCreateEventInput,
@@ -51,6 +52,26 @@ export type DashboardEventDetail = DashboardEventSummary & {
       waiting: number;
       humanAction: number;
     };
+  };
+  aiOperations: {
+    overallReadinessPercent: number;
+    completedAutomatically: number;
+    activelyHandling: number;
+    monitoredDeadlines: number;
+    escalatedIssues: number;
+    nextFollowUp: string;
+    recentActivity: Array<{
+      id: string;
+      title: string;
+      detail: string;
+      tone: "success" | "brand" | "warning" | "danger";
+    }>;
+    criticalRisks: Array<{
+      id: string;
+      label: string;
+      detail: string;
+      tone: "critical" | "warning";
+    }>;
   };
   bouts: Array<{
     id: string;
@@ -142,8 +163,102 @@ export type PromoterFightDetailData = {
   }>;
 };
 
+export type PromoterEventFighterListData = {
+  event: {
+    id: string;
+    slug: string;
+    name: string;
+    date: string;
+    location: string;
+  };
+  summary: {
+    total: number;
+    ready: number;
+    aiHandling: number;
+    humanAction: number;
+    waiting: number;
+  };
+  fighters: Array<{
+    id: string;
+    fightId: string | null;
+    name: string;
+    opponent: string;
+    weightClass: string;
+    managerName: string;
+    contactEmail: string;
+    readinessPercent: number;
+    status: "ready" | "ai_handling" | "human_action" | "waiting";
+    statusLabel: string;
+    nextAction: string;
+    contract: string;
+    documents: string;
+    medical: string;
+    visa: string;
+    travel: string;
+    accommodation: string;
+  }>;
+};
+
+export type PromoterEventFighterDetailData = {
+  event: PromoterEventFighterListData["event"];
+  fighter: {
+    id: string;
+    name: string;
+    managerName: string;
+    contactEmail: string;
+    contactPhone: string;
+    nationality: string;
+    stance: string;
+    inviteStatus: string;
+    inviteAcceptedAt: string;
+    contractReference: string;
+  };
+  fight: {
+    id: string | null;
+    opponent: string;
+    weightClass: string;
+    position: string;
+  };
+  readiness: {
+    percentage: number;
+    statusLabel: string;
+    nextAction: string;
+    completed: number;
+    pending: number;
+    needsReview: number;
+    missing: number;
+  };
+  requirementGroups: Array<{
+    category: string;
+    total: number;
+    completed: number;
+    statusLabel: string;
+  }>;
+  requirements: Array<{
+    id: string;
+    name: string;
+    category: string;
+    priority: string;
+    statusLabel: string;
+    dueLabel: string;
+    description: string;
+    fileName: string | null;
+    submittedAt: string | null;
+    reviewNote: string | null;
+  }>;
+  timeline: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    timestamp: string;
+    tone: "success" | "warning" | "danger" | "brand" | "neutral";
+  }>;
+};
+
 const defaultTabs = [
   "Fight Card",
+  "Fighters",
+  "Event Readiness",
   "Required Documents",
   "Human Action",
   "Post Reminders",
@@ -262,8 +377,21 @@ export async function getPromoterEventDetailsBySlug(
         .filter((fighterId): fighterId is string => Boolean(fighterId)),
     ),
   );
-  const fighters = await fightersRepository.listFightersByIds(fighterIds);
-  const readinessItems = await fighterReadinessRepository.listByEventId(event.id);
+  const [
+    fighters,
+    readinessItems,
+    eventRequirements,
+    fighterRequirements,
+    reminderLogs,
+    documentSubmissions,
+  ] = await Promise.all([
+    fightersRepository.listFightersByIds(fighterIds),
+    fighterReadinessRepository.listByEventId(event.id),
+    eventRequirementsRepository.listByEventId(event.id),
+    fighterRequirementsRepository.listByEventId(event.id),
+    reminderLogsRepository.listByEventId(event.id),
+    documentSubmissionsRepository.listRecentForEvents([event.id]),
+  ]);
 
   const fighterMap = new Map(fighters.map((fighter) => [fighter.id, fighter]));
   const readinessMap = new Map(
@@ -289,6 +417,14 @@ export async function getPromoterEventDetailsBySlug(
     readinessItems.length - fighterReadyCount - fighterHumanActionCount,
     0,
   );
+  const aiOperations = buildEventAiOperations({
+    eventName: event.name,
+    readinessItems,
+    eventRequirements,
+    fighterRequirements,
+    reminderLogs,
+    documentSubmissions,
+  });
 
   return {
     id: event.id,
@@ -315,6 +451,7 @@ export async function getPromoterEventDetailsBySlug(
         humanAction: fighterHumanActionCount,
       },
     },
+    aiOperations,
     bouts: fights.map((fight) => {
       const fighterA = fight.fighterAId ? fighterMap.get(fight.fighterAId) : null;
       const fighterB = fight.fighterBId ? fighterMap.get(fight.fighterBId) : null;
@@ -334,6 +471,280 @@ export async function getPromoterEventDetailsBySlug(
         leftFighter: mapDashboardFighter(fighterA, readinessA, fight.division),
         rightFighter: mapDashboardFighter(fighterB, readinessB, fight.division),
       };
+    }),
+  };
+}
+
+export async function getPromoterEventFighterListBySlug(
+  slug: string,
+): Promise<PromoterEventFighterListData | null> {
+  const event = await eventsRepository.findEventBySlug(slug);
+
+  if (!event) {
+    return null;
+  }
+
+  const fights = await getFightsByEventId(event.id);
+  const fighterIds = Array.from(
+    new Set(
+      fights
+        .flatMap((fight) => [fight.fighterAId, fight.fighterBId])
+        .filter((fighterId): fighterId is string => Boolean(fighterId)),
+    ),
+  );
+  const [fighters, readinessItems, eventRequirements, fighterRequirements] =
+    await Promise.all([
+      fightersRepository.listFightersByIds(fighterIds),
+      fighterReadinessRepository.listByEventId(event.id),
+      eventRequirementsRepository.listByEventId(event.id),
+      fighterRequirementsRepository.listByEventId(event.id),
+    ]);
+
+  const fighterMap = new Map(fighters.map((fighter) => [fighter.id, fighter]));
+  const readinessMap = new Map(
+    readinessItems.map((readiness) => [readiness.fighterId, readiness]),
+  );
+  const eventRequirementMap = new Map(
+    eventRequirements.map((requirement) => [requirement.id, requirement]),
+  );
+  const requirementsByFighterId = new Map<string, FighterRequirementRecord[]>();
+  const fightByFighterId = new Map<
+    string,
+    { fightId: string; opponentFighterId: string | null; division: string }
+  >();
+
+  for (const requirement of fighterRequirements) {
+    const current = requirementsByFighterId.get(requirement.fighterId) ?? [];
+    current.push(requirement);
+    requirementsByFighterId.set(requirement.fighterId, current);
+  }
+
+  for (const fight of fights) {
+    if (fight.fighterAId) {
+      fightByFighterId.set(fight.fighterAId, {
+        fightId: fight.id,
+        opponentFighterId: fight.fighterBId,
+        division: fight.division,
+      });
+    }
+
+    if (fight.fighterBId) {
+      fightByFighterId.set(fight.fighterBId, {
+        fightId: fight.id,
+        opponentFighterId: fight.fighterAId,
+        division: fight.division,
+      });
+    }
+  }
+
+  const fightersList = fighters
+    .map((fighter) => {
+      const readiness = readinessMap.get(fighter.id) ?? null;
+      const fight = fightByFighterId.get(fighter.id) ?? null;
+      const opponent = fight?.opponentFighterId
+        ? fighterMap.get(fight.opponentFighterId)
+        : null;
+      const requirements = requirementsByFighterId.get(fighter.id) ?? [];
+
+      return {
+        id: fighter.id,
+        fightId: fight?.fightId ?? null,
+        name: fighter.fullName,
+        opponent: opponent?.fullName ?? "TBD",
+        weightClass: fighter.division ?? fight?.division ?? "TBD",
+        managerName: fighter.managerName ?? "Not assigned",
+        contactEmail: fighter.managerEmail ?? "Not assigned",
+        readinessPercent: readiness?.readinessPercentage ?? 0,
+        status: mapEventFighterStatus(readiness?.status ?? "WAITING"),
+        statusLabel: mapEventFighterStatusLabel(readiness?.status ?? "WAITING"),
+        nextAction: readiness?.nextAction ?? "Waiting for readiness activity.",
+        contract: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.isSignedAgreement,
+        }),
+        documents: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.category === "Legal",
+        }),
+        medical: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.category === "Medical",
+        }),
+        visa: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.category === "Visa",
+        }),
+        travel: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.category === "Travel",
+        }),
+        accommodation: summarizeRequirementGroup({
+          requirements,
+          eventRequirementMap,
+          matcher: (requirement) => requirement.category === "Accommodation",
+        }),
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    event: {
+      id: event.id,
+      slug: event.slug,
+      name: event.name,
+      date: formatDateOnly(event.date),
+      location: event.location,
+    },
+    summary: {
+      total: fightersList.length,
+      ready: fightersList.filter((fighter) => fighter.status === "ready").length,
+      aiHandling: fightersList.filter((fighter) => fighter.status === "ai_handling").length,
+      humanAction: fightersList.filter((fighter) => fighter.status === "human_action").length,
+      waiting: fightersList.filter((fighter) => fighter.status === "waiting").length,
+    },
+    fighters: fightersList,
+  };
+}
+
+export async function getPromoterEventFighterDetailBySlugAndId(
+  slug: string,
+  fighterId: string,
+): Promise<PromoterEventFighterDetailData | null> {
+  const event = await eventsRepository.findEventBySlug(slug);
+  const fighter = await fightersRepository.findFighterById(fighterId);
+
+  if (!event || !fighter) {
+    return null;
+  }
+
+  const fights = await getFightsByEventId(event.id);
+  const fight =
+    fights.find(
+      (item) => item.fighterAId === fighter.id || item.fighterBId === fighter.id,
+    ) ?? null;
+
+  if (!fight) {
+    return null;
+  }
+
+  const opponentId =
+    fight.fighterAId === fighter.id ? fight.fighterBId : fight.fighterAId;
+
+  const [
+    opponent,
+    readiness,
+    eventRequirements,
+    fighterRequirements,
+    documentSubmissions,
+    reminderHistory,
+  ] = await Promise.all([
+    opponentId ? fightersRepository.findFighterById(opponentId) : Promise.resolve(null),
+    fighterReadinessRepository.findByEventAndFighter(event.id, fighter.id),
+    eventRequirementsRepository.listByEventId(event.id),
+    fighterRequirementsRepository.listByEventAndFighter(event.id, fighter.id),
+    documentSubmissionsRepository.listByEventAndFighter(event.id, fighter.id),
+    reminderLogsRepository.listByEventAndFighter(event.id, fighter.id),
+  ]);
+  const eventRequirementMap = new Map(
+    eventRequirements.map((requirement) => [requirement.id, requirement]),
+  );
+  const latestSubmissionByRequirementId = new Map<
+    string,
+    (typeof documentSubmissions)[number]
+  >();
+
+  for (const submission of documentSubmissions) {
+    if (!latestSubmissionByRequirementId.has(submission.fighterRequirementId)) {
+      latestSubmissionByRequirementId.set(submission.fighterRequirementId, submission);
+    }
+  }
+
+  const completed = fighterRequirements.filter((requirement) =>
+    ["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status),
+  ).length;
+  const needsReview = fighterRequirements.filter((requirement) =>
+    ["RECEIVED", "PROCESSING", "HUMAN_ACTION"].includes(requirement.status),
+  ).length;
+  const missing = fighterRequirements.filter((requirement) =>
+    ["WAITING", "NEEDS_RESUBMISSION"].includes(requirement.status),
+  ).length;
+  const readinessStatus = readiness?.status ?? "WAITING";
+
+  return {
+    event: {
+      id: event.id,
+      slug: event.slug,
+      name: event.name,
+      date: formatDateOnly(event.date),
+      location: event.location,
+    },
+    fighter: {
+      id: fighter.id,
+      name: fighter.fullName,
+      managerName: fighter.managerName ?? "Not assigned",
+      contactEmail: fighter.managerEmail ?? "Not assigned",
+      contactPhone: fighter.managerPhone ?? "Not provided",
+      nationality: fighter.nationality ?? "Not provided",
+      stance: fighter.stance ?? "Not provided",
+      inviteStatus: fighter.inviteStatus === "accepted" ? "Accepted" : "Pending",
+      inviteAcceptedAt: fighter.inviteAcceptedAt
+        ? formatDateTimeLabel(fighter.inviteAcceptedAt)
+        : "Not accepted yet",
+      contractReference: fighter.contractReference ?? "Not assigned",
+    },
+    fight: {
+      id: fight.id,
+      opponent: opponent?.fullName ?? "TBD",
+      weightClass: fighter.division ?? fight.division,
+      position: formatPromoterPositionLabel(fight.order),
+    },
+    readiness: {
+      percentage: readiness?.readinessPercentage ?? 0,
+      statusLabel: mapEventFighterStatusLabel(readinessStatus),
+      nextAction: readiness?.nextAction ?? "Waiting for readiness activity.",
+      completed,
+      pending: needsReview,
+      needsReview,
+      missing,
+    },
+    requirementGroups: buildPromoterRequirementGroups(
+      fighterRequirements,
+      eventRequirementMap,
+    ),
+    requirements: fighterRequirements.map((requirement) => {
+      const eventRequirement = eventRequirementMap.get(requirement.eventRequirementId);
+      const submission = latestSubmissionByRequirementId.get(requirement.id);
+
+      return {
+        id: requirement.id,
+        name: eventRequirement?.name ?? "Requirement",
+        category: eventRequirement?.category ?? "Operations",
+        priority: mapPriorityLabel(requirement.priority),
+        statusLabel: mapRequirementStatusLabel(requirement.status),
+        dueLabel: requirement.dueDate
+          ? `Due ${formatDisplayDate(requirement.dueDate)}`
+          : "No due date",
+        description:
+          requirement.overrideReason ??
+          requirement.aiReason ??
+          eventRequirement?.description ??
+          "Complete this requirement to keep fighter readiness moving.",
+        fileName: submission?.originalFileName ?? null,
+        submittedAt: submission ? formatDateTimeLabel(submission.createdAt) : null,
+        reviewNote: submission?.reviewNote ?? null,
+      };
+    }),
+    timeline: buildPromoterFighterTimeline({
+      fighterName: fighter.fullName,
+      fighterRequirements,
+      eventRequirementMap,
+      documentSubmissions,
+      reminderHistory,
     }),
   };
 }
@@ -640,6 +1051,371 @@ function mapRequirementNote(
   return "Submission has been received and is awaiting review.";
 }
 
+function mapEventFighterStatus(
+  status: "READY" | "WAITING" | "HUMAN_ACTION" | "PROCESSING",
+): PromoterEventFighterListData["fighters"][number]["status"] {
+  if (status === "READY") {
+    return "ready";
+  }
+
+  if (status === "HUMAN_ACTION") {
+    return "human_action";
+  }
+
+  if (status === "PROCESSING") {
+    return "ai_handling";
+  }
+
+  return "waiting";
+}
+
+function mapEventFighterStatusLabel(status: "READY" | "WAITING" | "HUMAN_ACTION" | "PROCESSING") {
+  if (status === "READY") {
+    return "Ready";
+  }
+
+  if (status === "HUMAN_ACTION") {
+    return "Human action";
+  }
+
+  if (status === "PROCESSING") {
+    return "AI handling";
+  }
+
+  return "Waiting";
+}
+
+function summarizeRequirementGroup(params: {
+  requirements: FighterRequirementRecord[];
+  eventRequirementMap: Map<string, EventRequirementRecord>;
+  matcher: (requirement: EventRequirementRecord) => boolean;
+}) {
+  const matchingRequirements = params.requirements.filter((requirement) => {
+    const eventRequirement = params.eventRequirementMap.get(
+      requirement.eventRequirementId,
+    );
+    return eventRequirement ? params.matcher(eventRequirement) : false;
+  });
+
+  if (matchingRequirements.length === 0) {
+    return "Not required";
+  }
+
+  const accepted = matchingRequirements.filter((requirement) =>
+    ["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status),
+  ).length;
+  const humanAction = matchingRequirements.some(
+    (requirement) => requirement.status === "HUMAN_ACTION",
+  );
+  const underReview = matchingRequirements.some((requirement) =>
+    ["RECEIVED", "PROCESSING"].includes(requirement.status),
+  );
+  const needsResubmission = matchingRequirements.some(
+    (requirement) => requirement.status === "NEEDS_RESUBMISSION",
+  );
+
+  if (accepted === matchingRequirements.length) {
+    return "Complete";
+  }
+
+  if (humanAction) {
+    return "Human action";
+  }
+
+  if (needsResubmission) {
+    return "Needs resubmission";
+  }
+
+  if (underReview) {
+    return "Under review";
+  }
+
+  return `${accepted}/${matchingRequirements.length} complete`;
+}
+
+function buildEventAiOperations(params: {
+  eventName: string;
+  readinessItems: Awaited<ReturnType<typeof fighterReadinessRepository.listByEventId>>;
+  eventRequirements: EventRequirementRecord[];
+  fighterRequirements: FighterRequirementRecord[];
+  reminderLogs: Awaited<ReturnType<typeof reminderLogsRepository.listByEventId>>;
+  documentSubmissions: Awaited<
+    ReturnType<typeof documentSubmissionsRepository.listRecentForEvents>
+  >;
+}): DashboardEventDetail["aiOperations"] {
+  const mandatoryRequirements = params.fighterRequirements.filter(
+    (requirement) => requirement.required,
+  );
+  const completedAutomatically = mandatoryRequirements.filter((requirement) =>
+    ["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status),
+  ).length;
+  const activelyHandling = mandatoryRequirements.filter((requirement) =>
+    ["WAITING", "PROCESSING", "RECEIVED", "NEEDS_RESUBMISSION"].includes(
+      requirement.status,
+    ),
+  ).length;
+  const escalatedIssues = mandatoryRequirements.filter(
+    (requirement) => requirement.status === "HUMAN_ACTION",
+  ).length;
+  const monitoredDeadlines = mandatoryRequirements.filter(
+    (requirement) => requirement.dueDate && !["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status),
+  ).length;
+  const overallReadinessPercent =
+    params.readinessItems.length === 0
+      ? 0
+      : Math.round(
+          params.readinessItems.reduce(
+            (sum, readiness) => sum + readiness.readinessPercentage,
+            0,
+          ) / params.readinessItems.length,
+        );
+  const nextPendingReminder =
+    params.reminderLogs
+      .filter((reminder) => reminder.status === "PENDING")
+      .sort(
+        (left, right) =>
+          new Date(left.scheduledFor).getTime() -
+          new Date(right.scheduledFor).getTime(),
+      )[0] ?? null;
+
+  return {
+    overallReadinessPercent,
+    completedAutomatically,
+    activelyHandling,
+    monitoredDeadlines,
+    escalatedIssues,
+    nextFollowUp: nextPendingReminder
+      ? `${nextPendingReminder.requirementName} reminder scheduled for ${formatDateOnly(nextPendingReminder.scheduledFor)}`
+      : "No automated follow-ups are currently queued.",
+    recentActivity: buildEventRecentActivity({
+      documentSubmissions: params.documentSubmissions,
+      reminderLogs: params.reminderLogs,
+    }),
+    criticalRisks: buildEventCriticalRisks({
+      eventName: params.eventName,
+      eventRequirements: params.eventRequirements,
+      fighterRequirements: params.fighterRequirements,
+    }),
+  };
+}
+
+function buildEventRecentActivity(params: {
+  documentSubmissions: Awaited<
+    ReturnType<typeof documentSubmissionsRepository.listRecentForEvents>
+  >;
+  reminderLogs: Awaited<ReturnType<typeof reminderLogsRepository.listByEventId>>;
+}) {
+  const submissionActivity = params.documentSubmissions.slice(0, 4).map((submission) => ({
+    id: `submission-${submission.id}`,
+    title:
+      submission.status === "ACCEPTED"
+        ? "Document accepted"
+        : submission.status === "REJECTED"
+          ? "Document rejected"
+          : "Document received",
+    detail: submission.originalFileName,
+    tone:
+      submission.status === "ACCEPTED"
+        ? ("success" as const)
+        : submission.status === "REJECTED"
+          ? ("danger" as const)
+          : ("brand" as const),
+    occurredAt: submission.createdAt,
+  }));
+  const reminderActivity = params.reminderLogs
+    .filter((reminder) => reminder.status === "SENT")
+    .slice(0, 4)
+    .map((reminder) => ({
+      id: `reminder-${reminder.id}`,
+      title: "Reminder sent automatically",
+      detail: `${reminder.requirementName} to ${reminder.recipientName}`,
+      tone: "success" as const,
+      occurredAt: reminder.sentAt ?? reminder.updatedAt,
+    }));
+
+  return [...submissionActivity, ...reminderActivity]
+    .sort(
+      (left, right) =>
+        new Date(right.occurredAt).getTime() -
+        new Date(left.occurredAt).getTime(),
+    )
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      tone: item.tone,
+    }));
+}
+
+function buildEventCriticalRisks(params: {
+  eventName: string;
+  eventRequirements: EventRequirementRecord[];
+  fighterRequirements: FighterRequirementRecord[];
+}) {
+  const eventRequirementMap = new Map(
+    params.eventRequirements.map((requirement) => [requirement.id, requirement]),
+  );
+  const risks = params.fighterRequirements
+    .filter((requirement) =>
+      requirement.status === "HUMAN_ACTION" ||
+      requirement.status === "NEEDS_RESUBMISSION" ||
+      isPastDueRequirement(requirement),
+    )
+    .slice(0, 5)
+    .map((requirement) => {
+      const eventRequirement = eventRequirementMap.get(requirement.eventRequirementId);
+      const isCritical =
+        requirement.status === "HUMAN_ACTION" ||
+        requirement.priority === "critical" ||
+        isPastDueRequirement(requirement);
+
+      return {
+        id: requirement.id,
+        label: eventRequirement?.name ?? "Requirement",
+        detail:
+          requirement.aiReason ??
+          requirement.overrideReason ??
+          `${params.eventName} requirement needs attention before readiness can close.`,
+        tone: isCritical ? ("critical" as const) : ("warning" as const),
+      };
+    });
+
+  if (risks.length === 0) {
+    return [
+      {
+        id: "no-critical-risks",
+        label: "No critical risks",
+        detail: "FightOps AI is monitoring deadlines and will escalate only if needed.",
+        tone: "warning" as const,
+      },
+    ];
+  }
+
+  return risks;
+}
+
+function isPastDueRequirement(requirement: FighterRequirementRecord) {
+  return (
+    Boolean(requirement.dueDate) &&
+    !["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status) &&
+    startOfDayIso(requirement.dueDate ?? CURRENT_LOCAL_DATE) <
+      startOfDayIso(CURRENT_LOCAL_DATE)
+  );
+}
+
+function buildPromoterRequirementGroups(
+  requirements: FighterRequirementRecord[],
+  eventRequirementMap: Map<string, EventRequirementRecord>,
+) {
+  const groups = new Map<string, FighterRequirementRecord[]>();
+
+  for (const requirement of requirements) {
+    const category =
+      eventRequirementMap.get(requirement.eventRequirementId)?.category ??
+      "Operations";
+    const current = groups.get(category) ?? [];
+    current.push(requirement);
+    groups.set(category, current);
+  }
+
+  return Array.from(groups.entries()).map(([category, groupRequirements]) => {
+    const completed = groupRequirements.filter((requirement) =>
+      ["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status),
+    ).length;
+
+    return {
+      category,
+      total: groupRequirements.length,
+      completed,
+      statusLabel:
+        completed === groupRequirements.length
+          ? "Complete"
+          : `${completed}/${groupRequirements.length} complete`,
+    };
+  });
+}
+
+function buildPromoterFighterTimeline(params: {
+  fighterName: string;
+  fighterRequirements: FighterRequirementRecord[];
+  eventRequirementMap: Map<string, EventRequirementRecord>;
+  documentSubmissions: Awaited<
+    ReturnType<typeof documentSubmissionsRepository.listByEventAndFighter>
+  >;
+  reminderHistory: Awaited<
+    ReturnType<typeof reminderLogsRepository.listByEventAndFighter>
+  >;
+}): PromoterEventFighterDetailData["timeline"] {
+  const timeline: Array<PromoterEventFighterDetailData["timeline"][number] & {
+    occurredAt: string;
+  }> = [];
+
+  for (const submission of params.documentSubmissions) {
+    const requirement = params.eventRequirementMap.get(
+      submission.eventRequirementId,
+    );
+    timeline.push({
+      id: `submission-${submission.id}`,
+      title: `${requirement?.name ?? "Document"} uploaded`,
+      detail: `${params.fighterName} submitted ${submission.originalFileName}.`,
+      timestamp: formatDateTimeLabel(submission.createdAt),
+      occurredAt: submission.createdAt,
+      tone:
+        submission.status === "ACCEPTED"
+          ? "success"
+          : submission.status === "REJECTED"
+            ? "danger"
+            : "brand",
+    });
+  }
+
+  for (const reminder of params.reminderHistory) {
+    timeline.push({
+      id: `reminder-${reminder.id}`,
+      title: `${reminder.requirementName} reminder ${mapReminderStatusLabel(reminder.status).toLowerCase()}`,
+      detail: `Email to ${reminder.recipientName} at ${reminder.recipientEmail}.`,
+      timestamp: formatDateTimeLabel(reminder.sentAt ?? reminder.scheduledFor),
+      occurredAt: reminder.sentAt ?? reminder.scheduledFor,
+      tone: reminder.status === "SENT" ? "success" : "warning",
+    });
+  }
+
+  for (const requirement of params.fighterRequirements) {
+    if (requirement.status !== "HUMAN_ACTION") {
+      continue;
+    }
+
+    const eventRequirement = params.eventRequirementMap.get(
+      requirement.eventRequirementId,
+    );
+    timeline.push({
+      id: `human-action-${requirement.id}`,
+      title: `${eventRequirement?.name ?? "Requirement"} escalated`,
+      detail:
+        requirement.aiReason ??
+        "FightOps AI needs a human decision before continuing.",
+      timestamp: formatDateTimeLabel(requirement.updatedAt),
+      occurredAt: requirement.updatedAt,
+      tone: "danger",
+    });
+  }
+
+  return timeline
+    .sort(
+      (left, right) =>
+        new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime(),
+    )
+    .slice(0, 12)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      timestamp: item.timestamp,
+      tone: item.tone,
+    }));
+}
+
 function buildFightInsightWaitingFor(
   eventRequirements: EventRequirementRecord[],
   leftRequirements: FighterRequirementRecord[],
@@ -798,6 +1574,87 @@ function mapContractStatusLabel(status: FighterRequirementStatus) {
   }
 
   return "Awaiting signature";
+}
+
+function formatPromoterPositionLabel(order: number) {
+  if (order === 1) {
+    return "Main Event";
+  }
+
+  if (order === 2) {
+    return "Co-Main Event";
+  }
+
+  return `Bout ${String(order).padStart(2, "0")}`;
+}
+
+function formatDisplayDate(isoDate: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(isoDate));
+}
+
+function mapPriorityLabel(priority: FighterRequirementRecord["priority"]) {
+  if (priority === "critical") {
+    return "Critical";
+  }
+
+  if (priority === "high") {
+    return "High";
+  }
+
+  if (priority === "medium") {
+    return "Medium";
+  }
+
+  return "Low";
+}
+
+function mapRequirementStatusLabel(status: FighterRequirementStatus) {
+  if (status === "ACCEPTED") {
+    return "Verified";
+  }
+
+  if (status === "RECEIVED") {
+    return "Received";
+  }
+
+  if (status === "PROCESSING") {
+    return "Processing";
+  }
+
+  if (status === "HUMAN_ACTION") {
+    return "Needs review";
+  }
+
+  if (status === "NEEDS_RESUBMISSION") {
+    return "Needs resubmission";
+  }
+
+  if (status === "NOT_APPLICABLE") {
+    return "Not applicable";
+  }
+
+  return "Waiting";
+}
+
+function mapReminderStatusLabel(status: "PENDING" | "SENT" | "SKIPPED" | "FAILED") {
+  if (status === "SENT") {
+    return "Sent";
+  }
+
+  if (status === "FAILED") {
+    return "Failed";
+  }
+
+  if (status === "SKIPPED") {
+    return "Skipped";
+  }
+
+  return "Queued";
 }
 
 function formatDateTimeLabel(isoDate: string) {

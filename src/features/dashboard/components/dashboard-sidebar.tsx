@@ -69,6 +69,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             label: "Activity Logs",
             icon: ActivityIcon,
           },
+          {
+            href: `${basePath}/vision`,
+            label: "AI Vision",
+            icon: SparkIcon,
+          },
         ];
   const settingsNavItems =
     user.role === "fighter"
@@ -356,6 +361,25 @@ function ActivityIcon({ className }: IconProps) {
     >
       <path d="M12 6v6l4 2" />
       <circle cx="12" cy="12" r="8" />
+    </svg>
+  );
+}
+
+function SparkIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3 13.7 8.3 19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3Z" />
+      <path d="M19 15.5 19.8 18l2.2.8-2.2.8L19 22l-.8-2.4-2.2-.8 2.2-.8.8-2.5Z" />
+      <path d="M5 14 5.6 16l1.9.6-1.9.6L5 19l-.6-1.8-1.9-.6 1.9-.6L5 14Z" />
     </svg>
   );
 }
