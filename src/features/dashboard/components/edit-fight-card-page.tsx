@@ -69,7 +69,7 @@ export function EditFightCardPage({
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/dashboard/promoter/events/${eventSlug}/add-fight`}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
           >
             <PlusIcon className="h-4 w-4" />
             <span>Add Fight</span>
@@ -78,7 +78,7 @@ export function EditFightCardPage({
             type="button"
             disabled={isSaving}
             onClick={handleSave}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-[12px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save order"}
           </button>
@@ -89,10 +89,10 @@ export function EditFightCardPage({
         {rows.map((row) => (
           <article
             key={row.id}
-            className="grid items-center gap-4 rounded-[16px] border border-border-subtle bg-panel px-4 py-4 shadow-[0_8px_20px_rgba(23,32,51,0.03)] lg:grid-cols-[auto_48px_1.2fr_1.2fr_auto_auto]"
+            className="grid items-center gap-4 rounded-[16px] border border-border-subtle bg-panel px-4 py-4 shadow-[var(--shadow-card)] lg:grid-cols-[auto_48px_1.2fr_1.2fr_auto_auto]"
           >
             <DragDots />
-            <span className="text-[18px] font-semibold text-[#8ea0ba]">{row.order}</span>
+            <span className="text-[18px] font-semibold text-icon-muted">{row.order}</span>
             <div>
               <p className="text-[18px] font-medium text-text-strong">{row.leftFighter.name}</p>
               <p className="text-[15px] text-text-muted">{row.division}</p>
@@ -115,7 +115,7 @@ export function EditFightCardPage({
         ))}
 
         {rows.length === 0 ? (
-          <section className="rounded-[16px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[0_8px_20px_rgba(23,32,51,0.03)]">
+          <section className="rounded-[16px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[var(--shadow-card)]">
             <p className="text-[20px] font-semibold text-text-strong">
               No fights to reorder
             </p>
@@ -138,10 +138,10 @@ function StatusPill({
 }) {
   const styles =
     tone === "success"
-      ? "bg-[#e6f8ec] text-success"
+      ? "bg-success-surface-strong text-success"
       : tone === "warning"
-        ? "bg-[#fff2d8] text-[#d97706]"
-        : "bg-[#edf3ff] text-brand";
+        ? "bg-warning-surface-muted text-warning"
+        : "bg-brand-surface-strong text-brand";
 
   return (
     <span className={`inline-flex rounded-[10px] border border-current/15 px-3 py-1 text-sm font-medium ${styles}`}>
@@ -152,7 +152,7 @@ function StatusPill({
 
 function DragDots() {
   return (
-    <div className="grid grid-cols-2 gap-1 text-[#c8d4e7]">
+    <div className="grid grid-cols-2 gap-1 text-drag-handle">
       {Array.from({ length: 6 }).map((_, index) => (
         <span key={index} className="h-1 w-1 rounded-full bg-current" />
       ))}

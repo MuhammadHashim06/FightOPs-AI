@@ -46,15 +46,16 @@ export function AddFightPage({
     }
 
     try {
+      const division = String(formData.get("division") ?? "");
       const response = await fetch(`/api/v1/events/${eventId}/fights`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          division: String(formData.get("division") ?? ""),
-          fighterA: buildFighterPayload(formData, "fighterA"),
-          fighterB: buildFighterPayload(formData, "fighterB"),
+          division,
+          fighterA: buildFighterPayload(formData, "fighterA", division),
+          fighterB: buildFighterPayload(formData, "fighterB", division),
         }),
       });
 
@@ -100,20 +101,28 @@ export function AddFightPage({
           Add Fight
         </h1>
         <p className="text-lg text-text-body">
-          Add both fighters now, one fighter now, or leave both slots open and fill them later.
+          Choose the bout weight class and add one or both fighters.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-2">
         <div className="xl:col-span-2">
-          <FormField label="Fight division">
-            <input
+          <FormField label="Weight class" required>
+            <select
               name="division"
-              type="text"
-              placeholder="e.g. Lightweight"
-              className={inputClassName}
+              className={`${inputClassName} appearance-none`}
+              defaultValue=""
               required
-            />
+            >
+              <option value="" disabled>
+                Select weight class
+              </option>
+              {weightClassOptions.map((weightClass) => (
+                <option key={weightClass} value={weightClass}>
+                  {weightClass}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
 
@@ -143,14 +152,14 @@ export function AddFightPage({
         <div className="flex justify-end gap-3 xl:col-span-2">
           <Link
             href={`/dashboard/promoter/events/${eventSlug}`}
-            className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+            className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving ? "Saving..." : "Save fight"}
           </button>
@@ -172,7 +181,7 @@ function FighterFormCard({
   onContractChange: (value: string) => void;
 }) {
   return (
-    <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
       <div className="mb-5 flex flex-col items-center gap-3">
         <div className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-border-strong bg-panel-muted text-text-muted">
           <UploadIcon className="h-5 w-5" />
@@ -218,14 +227,6 @@ function FighterFormCard({
             />
           </FormField>
         </div>
-        <FormField label="Weight class (optional)">
-          <input
-            name={`${prefix}.division`}
-            type="text"
-            placeholder="e.g. Lightweight"
-            className={inputClassName}
-          />
-        </FormField>
         <FormField label="Notes (optional)">
           <textarea name={`${prefix}.notes`} rows={4} className={textareaClassName} />
         </FormField>
@@ -258,21 +259,26 @@ function FighterFormCard({
 }
 
 const inputClassName =
-  "h-11 w-full rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "h-11 w-full rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 const textareaClassName =
-  "w-full rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "w-full rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 function FormField({
   label,
   children,
+  required = false,
 }: {
   label: string;
   children: ReactNode;
+  required?: boolean;
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[15px] font-semibold text-text-strong">{label}</span>
+      <span className="text-[15px] font-semibold text-text-strong">
+        {label}
+        {required ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       {children}
     </label>
   );
@@ -281,21 +287,42 @@ function FormField({
 function buildFighterPayload(
   formData: FormData,
   prefix: "fighterA" | "fighterB",
+  division: string,
 ) {
   const payload = {
     fullName: String(formData.get(`${prefix}.fullName`) ?? ""),
     managerName: String(formData.get(`${prefix}.managerName`) ?? ""),
     managerEmail: String(formData.get(`${prefix}.managerEmail`) ?? ""),
     managerPhone: String(formData.get(`${prefix}.managerPhone`) ?? ""),
-    division: String(formData.get(`${prefix}.division`) ?? ""),
+    division,
     notes: String(formData.get(`${prefix}.notes`) ?? ""),
     contractReference: String(formData.get(`${prefix}.contractReference`) ?? ""),
   };
 
-  const hasAnyValue = Object.values(payload).some((value) => value.trim().length > 0);
+  const hasAnyValue = [
+    payload.fullName,
+    payload.managerName,
+    payload.managerEmail,
+    payload.managerPhone,
+    payload.notes,
+    payload.contractReference,
+  ].some((value) => value.trim().length > 0);
 
   return hasAnyValue ? payload : null;
 }
+
+const weightClassOptions = [
+  "Strawweight",
+  "Flyweight",
+  "Bantamweight",
+  "Featherweight",
+  "Lightweight",
+  "Welterweight",
+  "Middleweight",
+  "Light Heavyweight",
+  "Heavyweight",
+  "Catchweight",
+];
 
 function ArrowLeftIcon({ className }: { className?: string }) {
   return (

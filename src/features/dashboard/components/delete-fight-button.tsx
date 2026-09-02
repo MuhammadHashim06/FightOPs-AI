@@ -63,7 +63,7 @@ export function DeleteFightButton({
       type="button"
       onClick={handleDelete}
       disabled={isDeleting}
-      className="inline-flex h-11 items-center justify-center rounded-[12px] border border-[#ffc8c8] bg-white px-4 text-sm font-medium text-danger transition hover:bg-[#fff5f5] disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex h-11 items-center justify-center rounded-[12px] border border-danger-border bg-panel px-4 text-sm font-medium text-danger transition hover:bg-danger-surface-strong disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isDeleting ? "Deleting..." : "Delete Fight Card"}
     </button>

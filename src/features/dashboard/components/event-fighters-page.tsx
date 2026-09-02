@@ -65,9 +65,9 @@ export function EventFightersPage({
         </div>
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-4 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[18px] border border-border-subtle bg-panel p-4 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-3 text-text-muted xl:max-w-[520px]">
+          <div className="flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-3 text-text-muted xl:max-w-[520px]">
             <SearchIcon className="h-4 w-4" />
             <input
               type="text"
@@ -89,8 +89,8 @@ export function EventFightersPage({
                   onClick={() => setActiveStatus(filter.value)}
                   className={`inline-flex h-10 items-center justify-center rounded-[10px] px-4 text-sm font-semibold transition ${
                     isActive
-                      ? "bg-brand text-white shadow-[0_10px_20px_rgba(47,107,255,0.22)]"
-                      : "border border-border-subtle bg-white text-text-body hover:bg-panel-muted hover:text-text-strong"
+                      ? "bg-brand text-text-inverse shadow-[var(--shadow-button-soft)]"
+                      : "border border-border-subtle bg-panel text-text-body hover:bg-panel-muted hover:text-text-strong"
                   }`}
                 >
                   {filter.label}
@@ -101,8 +101,8 @@ export function EventFightersPage({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
-        <div className="hidden grid-cols-[1.2fr_1fr_0.7fr_0.85fr_repeat(6,0.75fr)_0.7fr] border-b border-border-subtle bg-[rgba(248,250,255,0.9)] px-4 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-text-muted xl:grid">
+      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
+        <div className="hidden grid-cols-[1.2fr_1fr_0.7fr_0.85fr_repeat(6,0.75fr)_0.7fr] border-b border-border-subtle bg-[var(--table-head-bg)] px-4 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-text-muted xl:grid">
           <div>Fighter</div>
           <div>Opponent</div>
           <div>Weight</div>
@@ -156,7 +156,7 @@ export function EventFightersPage({
                 {fighter.fightId ? (
                   <Link
                     href={`/dashboard/promoter/events/${data.event.slug}/fighters/${fighter.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-semibold text-brand transition hover:bg-sidebar-accent"
+                    className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-semibold text-brand transition hover:bg-sidebar-accent"
                   >
                     Profile
                   </Link>
@@ -279,25 +279,25 @@ function getStatusBadgeStyles(value: string) {
   const normalizedValue = value.toLowerCase();
 
   if (normalizedValue.includes("ready") || normalizedValue.includes("complete")) {
-    return "border-[#b7ead1] bg-[#ecfbf2] text-success";
+    return "border-success-border bg-success-surface text-success";
   }
 
   if (
     normalizedValue.includes("human") ||
     normalizedValue.includes("resubmission")
   ) {
-    return "border-[#ffc2c2] bg-[#fff0f0] text-danger";
+    return "border-danger-border bg-danger-surface text-danger";
   }
 
   if (
     normalizedValue.includes("review") ||
     normalizedValue.includes("handling")
   ) {
-    return "border-[#c9d9ff] bg-[#edf3ff] text-brand";
+    return "border-brand-border bg-brand-surface-strong text-brand";
   }
 
   if (normalizedValue.includes("0/") || normalizedValue.includes("waiting")) {
-    return "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]";
+    return "border-warning-border bg-warning-surface text-warning";
   }
 
   return "border-border-subtle bg-panel-muted text-text-body";

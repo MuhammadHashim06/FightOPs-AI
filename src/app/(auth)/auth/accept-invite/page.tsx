@@ -19,11 +19,11 @@ export default async function AcceptInvitePage({
 
   return (
     <AuthScreen
-      title="Accept your event invite."
+      title="Accept your event invite"
       description={
         invite.isValid && invite.invite.hasActiveAccount
-          ? "Add this event to your existing fighter workspace."
-          : "Create your password to access your fighter workspace and event tasks."
+          ? "Add this event to your fighter workspace."
+          : "Create your password to continue."
       }
       footerPrompt="Already have access?"
       footerAction={{ href: "/auth/sign-in", label: "Log in" }}

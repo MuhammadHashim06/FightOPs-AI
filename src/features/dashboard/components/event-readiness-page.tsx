@@ -16,39 +16,39 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
         <span>Back to event</span>
       </Link>
 
-      <section className="grid gap-6 rounded-[24px] bg-[#172846] p-6 text-white shadow-[0_22px_48px_rgba(23,40,70,0.2)] xl:grid-cols-[1fr_1fr]">
+      <section className="grid gap-6 rounded-[24px] bg-surface-dark p-6 text-text-inverse shadow-[var(--shadow-dark-hero)] xl:grid-cols-[1fr_1fr]">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#8fa3c8]">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-surface-dark-muted">
             Event Readiness
           </p>
           <h1 className="mt-2 text-[38px] font-semibold tracking-tight">
             {event.name}
           </h1>
-          <p className="mt-2 text-[18px] text-[#c7d5ee]">
+          <p className="mt-2 text-[18px] text-surface-dark-body">
             {event.date} - {event.location}
           </p>
-          <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-[#d8e4f7]">
+          <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-surface-dark-body-strong">
             FightOps AI is coordinating routine follow-ups, monitoring deadlines,
             and separating automated work from the few decisions that need human
             judgment.
           </p>
         </div>
 
-        <div className="rounded-[20px] border border-white/10 bg-white/8 p-5">
+        <div className="rounded-[20px] border border-text-inverse/10 bg-panel/8 p-5">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8fa3c8]">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-surface-dark-muted">
                 Overall readiness
               </p>
               <p className="mt-2 text-[46px] font-semibold">
                 {event.aiOperations.overallReadinessPercent}%
               </p>
             </div>
-            <span className="rounded-[12px] border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold">
+            <span className="rounded-[12px] border border-text-inverse/15 bg-panel/10 px-4 py-2 text-sm font-semibold">
               {event.readiness.fighters.ready} of {event.fighters} fighters ready
             </span>
           </div>
-          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-white/15">
+          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-panel/15">
             <div
               className="h-full rounded-full bg-brand"
               style={{ width: `${event.aiOperations.overallReadinessPercent}%` }}
@@ -66,7 +66,7 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -99,7 +99,7 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
           </div>
         </article>
 
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
             Exceptions
           </p>
@@ -113,8 +113,8 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
                 key={risk.id}
                 className={`rounded-[16px] border px-4 py-4 ${
                   risk.tone === "critical"
-                    ? "border-[#ffc2c2] bg-[#fff0f0]"
-                    : "border-[#ffd38f] bg-[#fff6e5]"
+                    ? "border-danger-border bg-danger-surface"
+                    : "border-warning-border bg-warning-surface"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -129,8 +129,8 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
                   <span
                     className={`rounded-[999px] px-3 py-1 text-xs font-semibold uppercase ${
                       risk.tone === "critical"
-                        ? "bg-white text-danger"
-                        : "bg-white text-warning"
+                        ? "bg-panel text-danger"
+                        : "bg-panel text-warning"
                     }`}
                   >
                     {risk.tone}
@@ -181,7 +181,7 @@ function ReadinessMetric({
             : "text-text-strong";
 
   return (
-    <article className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
         {label}
       </p>
@@ -202,7 +202,7 @@ function ReadinessBreakdown({
   humanAction: number;
 }) {
   return (
-    <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
         {title}
       </p>

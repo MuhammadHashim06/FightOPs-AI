@@ -17,7 +17,7 @@ export type CreateEventInput = {
   name: string;
   date: string;
   location: string;
-  status: Exclude<EventStatus, "completed">;
+  status?: EventStatus;
   note?: string;
   templateIds?: string[];
 };

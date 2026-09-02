@@ -61,7 +61,7 @@ export function DeleteEventButton({
   const className =
     variant === "text"
       ? "text-[15px] font-medium text-danger transition hover:opacity-80"
-      : "inline-flex h-11 items-center justify-center rounded-[12px] border border-[#ffc8c8] bg-white px-4 text-sm font-medium text-danger transition hover:bg-[#fff5f5]";
+      : "inline-flex h-11 items-center justify-center rounded-[12px] border border-danger-border bg-panel px-4 text-sm font-medium text-danger transition hover:bg-danger-surface-strong";
 
   return (
     <button

@@ -14,8 +14,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <AuthScreen
-      title="Log in to your workspace."
-      description="Access your account to continue managing your workspace in one place."
+      title="Log in to your workspace"
+      description="Enter your details to continue."
       footerPrompt="New here?"
       footerAction={{ href: "/auth/sign-up", label: "Create an account" }}
       form={

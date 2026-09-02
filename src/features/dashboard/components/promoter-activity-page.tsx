@@ -45,9 +45,9 @@ export function PromoterActivityPage() {
         </p>
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 text-text-muted">
+          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-text-muted">
             <SearchIcon className="h-5 w-5" />
             <input
               type="text"
@@ -66,7 +66,7 @@ export function PromoterActivityPage() {
                   event.target.value as (typeof actorFilters)[number]["value"],
                 )
               }
-              className="h-12 w-full appearance-none rounded-[12px] border border-border-subtle bg-white px-4 pr-11 text-[15px] text-text-strong outline-none transition focus:border-brand"
+              className="h-12 w-full appearance-none rounded-[12px] border border-border-subtle bg-panel px-4 pr-11 text-[15px] text-text-strong outline-none transition focus:border-brand"
             >
               {actorFilters.map((filter) => (
                 <option key={filter.value} value={filter.value}>
@@ -79,7 +79,7 @@ export function PromoterActivityPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="hidden grid-cols-[1.5fr_1fr_1.1fr_1.7fr_1.5fr_1fr] gap-4 border-b border-border-subtle px-10 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
           <span>Timestamp</span>
           <span>Actor</span>
@@ -121,7 +121,7 @@ export function PromoterActivityPage() {
                     : entry.confidence.startsWith("49%") ||
                         entry.confidence.startsWith("58%") ||
                         entry.confidence.startsWith("64%")
-                      ? "text-[#7c3aed]"
+                      ? "text-info"
                       : "text-success"
                 }`}
               >
@@ -168,8 +168,8 @@ function ActorBadge({
 }) {
   const styles =
     actorType === "ai"
-      ? "bg-[#edf3ff] text-brand"
-      : "bg-[#e8fbf7] text-[#14b8a6]";
+      ? "bg-brand-surface-strong text-brand"
+      : "bg-teal-surface text-teal";
 
   return (
     <span
@@ -195,10 +195,10 @@ function PaginationButton({
       type="button"
       className={`inline-flex h-8 min-w-8 items-center justify-center rounded-[8px] border px-3 text-sm font-medium transition ${
         active
-          ? "border-brand bg-brand text-white"
+          ? "border-brand bg-brand text-text-inverse"
           : muted
-            ? "border-border-subtle bg-white text-text-muted"
-            : "border-border-subtle bg-white text-text-strong hover:bg-panel-muted"
+            ? "border-border-subtle bg-panel text-text-muted"
+            : "border-border-subtle bg-panel text-text-strong hover:bg-panel-muted"
       }`}
     >
       {muted ? `‹ ${label}` : label}

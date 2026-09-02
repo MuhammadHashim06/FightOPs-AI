@@ -1,0 +1,21 @@
+auth screen
+Auth screens must be much simple and also have less text only necessary tex should be shown 
+duplicate login naviagation button in verfiction email
+
+Event screens
+Remove status drop down it should be auto base on event date past active(the nearest fight event) upcoming
+update the top step bar it lokks like buttons or tabs please update to much simpler design
+on saving system should check whether a new template is added if yes syste ask you have added these new template you want to add in the default or something like that
+show lesser text and make the design clean and simple for selecting from default template becuase it gooes a long scroll
+when a new account is created there should be no default templates
+in Event overview show much simpler and important statics rather having more much info than can be see on cards fight overview 
+
+Add fight
+remove wight class from fighter add option for grouping THE FIGHTS 
+
+also single dropdown option for adding weight class
+
+put star icon for required fields across the application
+rather clicking on open whole row should be clickable in event list
+
+jo fight overview an event overview main jo tabs hain wo consistent rahain over the tabs

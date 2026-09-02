@@ -9,6 +9,8 @@ import { useToast } from "@/providers/toast-provider";
 import type {
   EventRequirementInputType,
   EventRequirementRecord,
+  CreateEventRequirementInput,
+  CreateRequirementTemplateInput,
   RequirementDueAnchor,
   RequirementPriority,
   RequirementReminderCadence,
@@ -82,7 +84,6 @@ export function EventRequirementsPage({
   const router = useRouter();
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
   const [deadlineRule, setDeadlineRule] =
     useState<RequirementDueAnchor>("custom_date");
@@ -100,8 +101,6 @@ export function EventRequirementsPage({
     }
 
     setIsSaving(true);
-    setFormError(null);
-
     const formData = new FormData(form);
     const dueDate = String(formData.get("dueDate") ?? "").trim();
     const dueOffsetDays = String(formData.get("dueOffsetDays") ?? "").trim();
@@ -114,6 +113,15 @@ export function EventRequirementsPage({
     const dueAnchor = String(
       formData.get("dueAnchor") ?? "custom_date",
     ) as RequirementDueAnchor;
+    const requirementPayload = buildRequirementPayload({
+      formData,
+      dueAnchor,
+      dueDate,
+      dueOffsetDays,
+      reminderCadence,
+      reminderStartDays,
+    });
+    const shouldSaveAsDefault = formData.get("saveAsDefault") === "on";
 
     try {
       const response = await fetch(`/api/v1/events/${eventId}/requirements`, {
@@ -121,30 +129,7 @@ export function EventRequirementsPage({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          category: String(formData.get("category") ?? ""),
-          name: String(formData.get("name") ?? ""),
-          description: String(formData.get("description") ?? ""),
-          inputType: String(formData.get("inputType") ?? "document"),
-          required: formData.get("required") === "on",
-          priority: String(formData.get("priority") ?? "medium"),
-          dueAnchor,
-          dueDate: dueAnchor === "custom_date" ? dueDate || undefined : undefined,
-          dueOffsetDays:
-            dueAnchor === "custom_date" || !dueOffsetDays
-              ? undefined
-              : Number(dueOffsetDays),
-          reminderEnabled: reminderCadence !== "off",
-          reminderCadence,
-          reminderDaysBeforeDue:
-            reminderStartDays > 0 ? [reminderStartDays] : [0],
-          reminderSubject: String(formData.get("reminderSubject") ?? ""),
-          reminderMessage: String(formData.get("reminderMessage") ?? ""),
-          humanVerificationRequired:
-            formData.get("humanVerificationRequired") === "on",
-          isSignedAgreement: formData.get("isSignedAgreement") === "on",
-          acceptedFileTypes: ["pdf", "jpg", "jpeg", "png"],
-        }),
+        body: JSON.stringify(requirementPayload),
       });
 
       const result = await response.json();
@@ -153,8 +138,28 @@ export function EventRequirementsPage({
         throw new Error(result.error?.message ?? "Unable to save requirement.");
       }
 
+      if (shouldSaveAsDefault) {
+        const templateResponse = await fetch("/api/v1/requirement-templates", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(buildTemplatePayload(requirementPayload)),
+        });
+        const templateResult = await templateResponse.json();
+
+        if (!templateResponse.ok || !templateResult.success) {
+          throw new Error(
+            templateResult.error?.message ??
+              "Requirement saved, but default template was not created.",
+          );
+        }
+      }
+
       showToast({
-        title: "Requirement added successfully.",
+        title: shouldSaveAsDefault
+          ? "Requirement added and saved as a default template."
+          : "Requirement added to this event.",
         variant: "success",
       });
 
@@ -168,7 +173,6 @@ export function EventRequirementsPage({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to save requirement.";
-      setFormError(message);
       showToast({
         title: message,
         variant: "error",
@@ -201,10 +205,9 @@ export function EventRequirementsPage({
         <button
           type="button"
           onClick={() => {
-            setFormError(null);
             setIsRequirementModalOpen(true);
           }}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
         >
           <PlusIcon className="h-4 w-4" />
           <span>Add requirement</span>
@@ -213,19 +216,20 @@ export function EventRequirementsPage({
 
       <div className="flex flex-wrap gap-8 border-b border-border-subtle">
         <EventTab href={`/dashboard/promoter/events/${eventSlug}`}>Fight Card</EventTab>
+        <EventTab href={`/dashboard/promoter/events/${eventSlug}/fighters`}>Fighters</EventTab>
+        <EventTab href={`/dashboard/promoter/events/${eventSlug}/readiness`}>
+          Event Readiness
+        </EventTab>
         <EventTab href={`/dashboard/promoter/events/${eventSlug}/requirements`} active>
           Required Documents
         </EventTab>
-        <EventTab>Human Action</EventTab>
         <EventTab href={`/dashboard/promoter/events/${eventSlug}/post-reminders`}>
           Post Reminders
         </EventTab>
-        <EventTab>Event Knowledge</EventTab>
-        <EventTab>Communications</EventTab>
       </div>
 
       {!eventId ? (
-        <section className="rounded-[16px] border border-[#ffe3b3] bg-[#fff8ea] px-4 py-3 text-[15px] text-[#a36500]">
+        <section className="rounded-[16px] border border-warning-border bg-warning-surface-strong px-4 py-3 text-[15px] text-warning-strong">
           This is a demo event. Requirement creation is enabled automatically once the event
           exists in the database.
         </section>
@@ -238,14 +242,8 @@ export function EventRequirementsPage({
           onClose={() => setIsRequirementModalOpen(false)}
         >
           <form onSubmit={handleSubmit} className="space-y-5">
-          {formError ? (
-            <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger">
-              {formError}
-            </div>
-          ) : null}
-
           <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Requirement name">
+            <FormField label="Requirement name" required>
               <input
                 name="name"
                 type="text"
@@ -255,7 +253,7 @@ export function EventRequirementsPage({
               />
             </FormField>
 
-            <FormField label="Category">
+            <FormField label="Category" required>
               <select name="category" className={inputClassName} defaultValue="Medical">
                 {requirementCategories.map((category) => (
                   <option key={category} value={category}>
@@ -265,7 +263,7 @@ export function EventRequirementsPage({
               </select>
             </FormField>
 
-            <FormField label="Input type">
+            <FormField label="Input type" required>
               <select name="inputType" className={inputClassName} defaultValue="document">
                 {requirementInputTypes.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -275,7 +273,7 @@ export function EventRequirementsPage({
               </select>
             </FormField>
 
-            <FormField label="Priority">
+            <FormField label="Priority" required>
               <select name="priority" className={inputClassName} defaultValue="medium">
                 {requirementPriorities.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -285,7 +283,7 @@ export function EventRequirementsPage({
               </select>
             </FormField>
 
-            <FormField label="Deadline rule">
+            <FormField label="Deadline rule" required>
               <select
                 name="dueAnchor"
                 className={inputClassName}
@@ -303,11 +301,11 @@ export function EventRequirementsPage({
             </FormField>
 
             {deadlineRule === "custom_date" ? (
-              <FormField label="Exact deadline">
+              <FormField label="Exact deadline" required>
                 <input name="dueDate" type="date" className={inputClassName} required />
               </FormField>
             ) : (
-              <FormField label="Deadline days">
+              <FormField label="Deadline days" required>
                 <input
                   name="dueOffsetDays"
                   type="number"
@@ -319,7 +317,7 @@ export function EventRequirementsPage({
               </FormField>
             )}
 
-            <FormField label="Reminder cadence">
+            <FormField label="Reminder cadence" required>
               <select
                 name="reminderCadence"
                 className={inputClassName}
@@ -390,18 +388,29 @@ export function EventRequirementsPage({
             <ToggleField name="isSignedAgreement" label="Signed agreement" />
           </div>
 
+          <label className="flex items-start gap-3 rounded-[14px] border border-border-subtle bg-panel-muted px-4 py-3 text-[15px] text-text-body">
+            <input
+              name="saveAsDefault"
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-border-subtle accent-[var(--brand)]"
+            />
+            <span>
+              Also save this as a default template for future events.
+            </span>
+          </label>
+
           <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsRequirementModalOpen(false)}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? "Saving..." : "Save requirement"}
             </button>
@@ -410,7 +419,7 @@ export function EventRequirementsPage({
         </FormModal>
       ) : null}
 
-      <section className="rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="border-b border-border-subtle px-5 py-4">
           <h2 className="text-[20px] font-semibold text-text-strong">Current checklist</h2>
           <p className="mt-1 text-[15px] text-text-body">
@@ -537,7 +546,7 @@ function ToggleField({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-3 rounded-[14px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-strong">
+    <label className="flex items-center gap-3 rounded-[14px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-strong">
       <input
         name={name}
         type="checkbox"
@@ -552,26 +561,95 @@ function ToggleField({
 function FormField({
   label,
   children,
+  required = false,
 }: {
   label: string;
   children: ReactNode;
+  required?: boolean;
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[15px] font-semibold text-text-strong">{label}</span>
+      <span className="text-[15px] font-semibold text-text-strong">
+        {label}
+        {required ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       {children}
     </label>
   );
 }
 
+function buildRequirementPayload({
+  formData,
+  dueAnchor,
+  dueDate,
+  dueOffsetDays,
+  reminderCadence,
+  reminderStartDays,
+}: {
+  formData: FormData;
+  dueAnchor: RequirementDueAnchor;
+  dueDate: string;
+  dueOffsetDays: string;
+  reminderCadence: RequirementReminderCadence;
+  reminderStartDays: number;
+}): CreateEventRequirementInput {
+  return {
+    category: String(formData.get("category") ?? ""),
+    name: String(formData.get("name") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    inputType: String(formData.get("inputType") ?? "document") as EventRequirementInputType,
+    required: formData.get("required") === "on",
+    priority: String(formData.get("priority") ?? "medium") as RequirementPriority,
+    dueAnchor,
+    dueDate: dueAnchor === "custom_date" ? dueDate || undefined : undefined,
+    dueOffsetDays:
+      dueAnchor === "custom_date" || !dueOffsetDays ? undefined : Number(dueOffsetDays),
+    reminderEnabled: reminderCadence !== "off",
+    reminderCadence,
+    reminderDaysBeforeDue: reminderStartDays > 0 ? [reminderStartDays] : [0],
+    reminderSubject: String(formData.get("reminderSubject") ?? ""),
+    reminderMessage: String(formData.get("reminderMessage") ?? ""),
+    humanVerificationRequired: formData.get("humanVerificationRequired") === "on",
+    isSignedAgreement: formData.get("isSignedAgreement") === "on",
+    acceptedFileTypes: ["pdf", "jpg", "jpeg", "png"],
+  };
+}
+
+function buildTemplatePayload(
+  requirement: CreateEventRequirementInput,
+): CreateRequirementTemplateInput {
+  return {
+    category: requirement.category,
+    name: requirement.name,
+    description: requirement.description,
+    inputType: requirement.inputType,
+    required: requirement.required,
+    priority: requirement.priority,
+    dueAnchor: requirement.dueAnchor,
+    dueOffsetDays: requirement.dueOffsetDays,
+    dueDaysBeforeEvent:
+      requirement.dueAnchor === "before_event" ? requirement.dueOffsetDays : undefined,
+    reminderEnabled: requirement.reminderEnabled,
+    reminderCadence: requirement.reminderCadence,
+    reminderDaysBeforeDue: requirement.reminderDaysBeforeDue,
+    reminderSubject: requirement.reminderSubject,
+    reminderMessage: requirement.reminderMessage,
+    structuredFields: requirement.structuredFields,
+    documentBlocks: requirement.documentBlocks,
+    humanVerificationRequired: requirement.humanVerificationRequired,
+    isSignedAgreement: requirement.isSignedAgreement,
+    acceptedFileTypes: requirement.acceptedFileTypes,
+  };
+}
+
 function PriorityBadge({ priority }: { priority: RequirementPriority }) {
   const styles =
     priority === "critical"
-      ? "border-[#ffcfcf] bg-[#fff4f4] text-[#dc2626]"
+      ? "border-danger-border bg-danger-surface text-danger"
       : priority === "high"
-        ? "border-[#ffdca8] bg-[#fff8ea] text-[#d97706]"
+        ? "border-warning-border bg-warning-surface-strong text-warning"
         : priority === "medium"
-          ? "border-[#cedcff] bg-[#f4f7ff] text-[#356ae6]"
+          ? "border-brand-border bg-brand-surface text-brand"
           : "border-border-subtle bg-panel-muted text-text-body";
 
   return (
@@ -601,8 +679,8 @@ function FormModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0f172a]/40 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--overlay)] px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[var(--shadow-overlay)]">
         <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
           <div>
             <h2 className="text-[20px] font-semibold text-text-strong">{title}</h2>
@@ -660,10 +738,10 @@ function capitalize(value: string) {
 }
 
 const inputClassName =
-  "h-11 w-full rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "h-11 w-full rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 const textareaClassName =
-  "w-full rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "w-full rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 function ArrowLeftIcon({ className }: { className?: string }) {
   return (

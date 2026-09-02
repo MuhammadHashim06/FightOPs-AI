@@ -64,15 +64,15 @@ export function FighterSingleFightPage({
         <span>All Fights</span>
       </Link>
 
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] bg-[#18284a] px-6 py-7 text-white shadow-[0_18px_36px_rgba(24,40,74,0.18)]">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] bg-fighter-dark px-6 py-7 text-text-inverse shadow-[var(--shadow-fighter-card)]">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#8ca0c6]">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-fighter-dark-muted">
             {fight.titleLabel}
           </p>
           <h1 className="mt-2 text-[30px] font-semibold tracking-tight">
             {fight.eventName}
           </h1>
-          <p className="mt-2 text-[20px] text-[#c2d1ea]">
+          <p className="mt-2 text-[20px] text-fighter-dark-body">
             {fight.date} - {fight.venue}
           </p>
         </div>
@@ -188,7 +188,7 @@ export function FighterSingleFightPage({
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -218,14 +218,14 @@ export function FighterSingleFightPage({
               </div>
               <button
                 type="button"
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel"
               >
                 View contract
               </button>
             </div>
           </div>
 
-          <div className="mt-5 rounded-[16px] border border-dashed border-border-strong bg-white px-4 py-5">
+          <div className="mt-5 rounded-[16px] border border-dashed border-border-strong bg-panel px-4 py-5">
             <input
               ref={fileInputRef}
               type="file"
@@ -248,7 +248,7 @@ export function FighterSingleFightPage({
                 type="button"
                 disabled={!canUpload || uploadingRequirementId === fight.contractRequirementId}
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {uploadingRequirementId === fight.contractRequirementId
                   ? "Uploading..."
@@ -260,7 +260,7 @@ export function FighterSingleFightPage({
           </div>
 
           {contractStage === "under_review" ? (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#b8cbff] bg-[#eef3ff] px-4 py-4">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-brand-border bg-brand-surface-strong px-4 py-4">
               <div>
                 <p className="text-[16px] font-semibold text-text-strong">
                   Waiting for promoter approval
@@ -273,7 +273,7 @@ export function FighterSingleFightPage({
           ) : null}
         </article>
 
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -286,8 +286,8 @@ export function FighterSingleFightPage({
             <span
               className={`inline-flex rounded-[8px] border px-3 py-1 text-sm font-medium ${
                 isConfirmed
-                  ? "border-[#b7ead1] bg-[#ecfbf2] text-[#108a43]"
-                  : "border-[#d8e2f0] bg-[#f4f7fb] text-[#6982a7]"
+                  ? "border-success-border bg-success-surface text-success-strong"
+                  : "border-neutral-border bg-neutral-surface text-neutral-text"
               }`}
             >
               {isConfirmed ? "Unlocked" : "Locked"}
@@ -321,7 +321,7 @@ export function FighterSingleFightPage({
                   className={`rounded-[16px] border px-4 py-4 ${
                     isLocked
                       ? "border-border-subtle bg-panel-muted"
-                      : "border-[#b7ead1] bg-[#f7fcf8]"
+                      : "border-success-border bg-success-surface-pale"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -336,8 +336,8 @@ export function FighterSingleFightPage({
                     <span
                       className={`inline-flex rounded-[8px] px-2.5 py-1 text-xs font-semibold uppercase ${
                         isLocked
-                          ? "bg-white text-text-muted"
-                          : "bg-[#ecfbf2] text-[#108a43]"
+                          ? "bg-panel text-text-muted"
+                          : "bg-success-surface text-success-strong"
                       }`}
                     >
                       {isLocked ? "Locked" : "Available"}
@@ -443,7 +443,7 @@ function InfoCard({
   rows: Array<[string, string]>;
 }) {
   return (
-    <article className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
       <div className="border-b border-border-subtle px-5 py-4">
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
           {title}
@@ -484,7 +484,7 @@ function OverviewCard({
   footer?: string;
 }) {
   return (
-    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
         {eyebrow}
       </p>
@@ -539,7 +539,7 @@ function DocumentListCard({
   }>;
 }) {
   return (
-    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
       <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
         {eyebrow}
       </p>
@@ -565,7 +565,7 @@ function DocumentListCard({
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill label={item.badge} tone={item.tone} />
               {item.onUpload ? (
-                <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[10px] bg-brand px-3 text-sm font-medium text-white transition hover:bg-brand-strong has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
+                <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[10px] bg-brand px-3 text-sm font-medium text-text-inverse transition hover:bg-brand-strong has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60">
                   <input
                     type="file"
                     className="sr-only"
@@ -597,7 +597,7 @@ function ReminderHistoryCard({
   reminders: FighterFightDetailData["reminderHistory"];
 }) {
   return (
-    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -680,34 +680,34 @@ function getContractStageBadge(stage: ContractStage) {
   if (stage === "confirmed") {
     return {
       label: "Confirmed",
-      className: "border-[#b7ead1] bg-[#ecfbf2] text-[#108a43]",
+      className: "border-success-border bg-success-surface text-success-strong",
     };
   }
 
   if (stage === "under_review") {
     return {
       label: "Under review",
-      className: "border-[#b8cbff] bg-[#eef3ff] text-brand",
+      className: "border-brand-border bg-brand-surface-strong text-brand",
     };
   }
 
   return {
     label: "Signature required",
-    className: "border-[#ffd68a] bg-[#fff6df] text-[#cc7a00]",
+    className: "border-warning-border bg-warning-surface text-warning",
   };
 }
 
 function getOverviewToneClassName(tone: "brand" | "neutral" | "success" | "warning") {
   if (tone === "brand") {
-    return "border-[#b8cbff] bg-[#eef3ff] text-brand";
+    return "border-brand-border bg-brand-surface-strong text-brand";
   }
 
   if (tone === "success") {
-    return "border-[#b7ead1] bg-[#ecfbf2] text-[#108a43]";
+    return "border-success-border bg-success-surface text-success-strong";
   }
 
   if (tone === "warning") {
-    return "border-[#ffd68a] bg-[#fff6df] text-[#cc7a00]";
+    return "border-warning-border bg-warning-surface text-warning";
   }
 
   return "border-border-subtle bg-panel-muted text-text-strong";
@@ -717,22 +717,22 @@ function getPillToneClassName(
   tone: "success" | "warning" | "neutral" | "danger" | "brand",
 ) {
   if (tone === "success") {
-    return "border-[#b7ead1] bg-[#ecfbf2] text-[#108a43]";
+    return "border-success-border bg-success-surface text-success-strong";
   }
 
   if (tone === "warning") {
-    return "border-[#ffd68a] bg-[#fff6df] text-[#cc7a00]";
+    return "border-warning-border bg-warning-surface text-warning";
   }
 
   if (tone === "danger") {
-    return "border-[#f7c4c0] bg-[#fff1f1] text-[#d92d20]";
+    return "border-danger-border bg-danger-surface text-danger-strong";
   }
 
   if (tone === "brand") {
-    return "border-[#b8cbff] bg-[#eef3ff] text-brand";
+    return "border-brand-border bg-brand-surface-strong text-brand";
   }
 
-  return "border-border-subtle bg-white text-text-body";
+  return "border-border-subtle bg-panel text-text-body";
 }
 
 function getReminderTone(statusLabel: string) {

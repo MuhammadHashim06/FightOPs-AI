@@ -45,9 +45,9 @@ export function HumanActionPage() {
         </p>
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 text-text-muted">
+          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-text-muted">
             <SearchIcon className="h-5 w-5" />
             <input
               type="text"
@@ -58,7 +58,7 @@ export function HumanActionPage() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 rounded-[12px] border border-border-subtle bg-white p-1">
+          <div className="flex flex-wrap gap-2 rounded-[12px] border border-border-subtle bg-panel p-1">
             {filters.map((filter) => (
               <button
                 key={filter}
@@ -66,7 +66,7 @@ export function HumanActionPage() {
                 onClick={() => setActiveFilter(filter)}
                 className={`rounded-[10px] px-4 py-2 text-[15px] font-medium transition ${
                   activeFilter === filter
-                    ? "bg-brand text-white"
+                    ? "bg-brand text-text-inverse"
                     : "text-text-body hover:bg-panel-muted hover:text-text-strong"
                 }`}
               >
@@ -77,7 +77,7 @@ export function HumanActionPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="hidden grid-cols-[1.2fr_1.5fr_1.3fr_1.5fr_1.4fr_1.2fr] gap-4 border-b border-border-subtle px-10 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
           <span>Priority</span>
           <span>Event</span>
@@ -103,7 +103,7 @@ export function HumanActionPage() {
               </div>
               <div className="text-[15px] text-text-body">{item.reason}</div>
               <div className="text-[15px] text-text-body">{item.requirement}</div>
-              <div className="text-[15px] font-medium text-[#7c3aed]">
+              <div className="text-[15px] font-medium text-info">
                 {item.confidence}
               </div>
             </Link>

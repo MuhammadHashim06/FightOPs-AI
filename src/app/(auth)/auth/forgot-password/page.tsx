@@ -5,7 +5,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthScreen
       title="Forgot your password?"
-      description="Enter your email address and we will send you a link to reset your password."
+      description="Enter your email to receive a reset link."
       footerPrompt="Remembered your password?"
       footerAction={{ href: "/auth/sign-in", label: "Back to log in" }}
       form={<ForgotPasswordForm />}

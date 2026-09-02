@@ -14,19 +14,19 @@ export function FighterDashboardPage({
       title: "Documents",
       value: dashboard.documentSummary,
       icon: DocumentIcon,
-      iconClassName: "bg-[#edf3ff] text-brand",
+      iconClassName: "bg-brand-surface-strong text-brand",
     },
     {
       title: "Notifications",
       value: dashboard.notificationSummary,
       icon: BellIcon,
-      iconClassName: "bg-[#fff5e8] text-[#f08a00]",
+      iconClassName: "bg-warning-surface-soft text-warning-bright",
     },
     {
       title: "Contact Support",
       value: dashboard.supportSummary,
       icon: ChatIcon,
-      iconClassName: "bg-[#ecfbf7] text-[#00a78e]",
+      iconClassName: "bg-teal-surface-soft text-teal-solid",
     },
   ];
 
@@ -34,26 +34,26 @@ export function FighterDashboardPage({
     {
       label: "Required",
       value: String(dashboard.readiness.required),
-      toneClassName: "bg-[#f4f7fb] text-text-strong",
+      toneClassName: "bg-neutral-surface text-text-strong",
       detailClassName: "text-text-body",
     },
     {
       label: "Verified",
       value: String(dashboard.readiness.verified),
-      toneClassName: "bg-[#edf9f1] text-[#108a43]",
-      detailClassName: "text-[#3d9a66]",
+      toneClassName: "bg-success-surface-muted text-success-strong",
+      detailClassName: "text-success-muted",
     },
     {
       label: "Pending",
       value: String(dashboard.readiness.pending),
-      toneClassName: "bg-[#fff7e8] text-[#cc6d00]",
-      detailClassName: "text-[#d9912f]",
+      toneClassName: "bg-warning-surface-strong text-warning-muted",
+      detailClassName: "text-warning-soft",
     },
     {
       label: "Rejected",
       value: String(dashboard.readiness.rejected),
-      toneClassName: "bg-[#fff1f1] text-[#d92d20]",
-      detailClassName: "text-[#e14a40]",
+      toneClassName: "bg-danger-surface text-danger-strong",
+      detailClassName: "text-danger-muted",
     },
   ];
 
@@ -75,7 +75,7 @@ export function FighterDashboardPage({
         {quickStats.map((item) => (
           <article
             key={item.title}
-            className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]"
+            className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]"
           >
             <div
               className={`flex h-11 w-11 items-center justify-center rounded-[14px] ${item.iconClassName}`}
@@ -91,17 +91,17 @@ export function FighterDashboardPage({
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.04fr_1fr]">
-        <article className="rounded-[20px] bg-[#18284a] p-6 text-white shadow-[0_18px_36px_rgba(24,40,74,0.18)]">
+        <article className="rounded-[20px] bg-fighter-dark p-6 text-text-inverse shadow-[var(--shadow-fighter-card)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#8ca0c6]">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-fighter-dark-muted">
                 Upcoming Fight
               </p>
               <h2 className="mt-6 text-[22px] font-semibold">
                 {dashboard.upcomingFight?.eventName ?? "No fight assigned yet"}
               </h2>
             </div>
-            <span className="inline-flex rounded-[8px] border border-[#24684b] bg-[#173b2f] px-3 py-1 text-sm font-medium text-[#78dca7]">
+            <span className="inline-flex rounded-[8px] border border-fighter-confirmed-border bg-fighter-confirmed-bg px-3 py-1 text-sm font-medium text-fighter-confirmed-text">
               {dashboard.upcomingFight?.statusLabel ?? "Waiting"}
             </span>
           </div>
@@ -127,13 +127,13 @@ export function FighterDashboardPage({
 
           <Link
             href="/dashboard/fighter/events"
-            className="mt-8 inline-flex h-11 w-full items-center justify-center rounded-[14px] border border-[#415372] bg-transparent px-4 text-[16px] font-medium text-white transition hover:bg-white/5"
+            className="mt-8 inline-flex h-11 w-full items-center justify-center rounded-[14px] border border-fighter-secondary-border bg-transparent px-4 text-[16px] font-medium text-text-inverse transition hover:bg-panel/5"
           >
             View all fights
           </Link>
         </article>
 
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -143,12 +143,12 @@ export function FighterDashboardPage({
                 {dashboard.readiness.percentage}% Ready
               </h2>
             </div>
-            <span className="inline-flex rounded-[8px] border border-[#b8cbff] bg-[#eef3ff] px-3 py-1 text-sm font-semibold uppercase text-brand">
+            <span className="inline-flex rounded-[8px] border border-brand-border bg-brand-surface-strong px-3 py-1 text-sm font-semibold uppercase text-brand">
               {dashboard.readiness.statusLabel}
             </span>
           </div>
 
-          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-[#e8eef7]">
+          <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-progress-track">
             <div
               className="h-full rounded-full bg-brand transition-[width] duration-300"
               style={{ width: `${dashboard.readiness.percentage}%` }}
@@ -171,7 +171,7 @@ export function FighterDashboardPage({
 
           <Link
             href="/dashboard/fighter/documents"
-            className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-[14px] bg-brand px-4 text-[16px] font-medium text-white transition hover:bg-brand-strong"
+            className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-[14px] bg-brand px-4 text-[16px] font-medium text-text-inverse transition hover:bg-brand-strong"
           >
             View Required Documents
           </Link>
@@ -190,10 +190,10 @@ function DetailBlock({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#7f93b8]">
+      <p className="text-sm font-medium uppercase tracking-[0.18em] text-fighter-meta">
         {label}
       </p>
-      <p className="text-[16px] font-semibold text-white">{value}</p>
+      <p className="text-[16px] font-semibold text-text-inverse">{value}</p>
     </div>
   );
 }

@@ -72,7 +72,7 @@ export function PromoterEventDetails({
           </Link>
           <Link
             href={`/dashboard/promoter/events/${event.slug}/add-fight`}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong"
           >
             <PlusIcon className="h-4 w-4" />
             <span>Add Fight</span>
@@ -80,75 +80,52 @@ export function PromoterEventDetails({
         </div>
       </div>
 
-      <section className="grid gap-4 rounded-[18px] border border-border-subtle bg-panel px-4 py-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)] lg:grid-cols-2 lg:px-6">
-        <ReadinessSummary title="Fight Readiness" data={event.readiness.fights} />
-        <ReadinessSummary
-          title="Fighter Readiness"
-          data={event.readiness.fighters}
-          align="right"
-        />
-      </section>
-
-      <section className="grid gap-5 rounded-[22px] bg-[#172846] p-5 text-white shadow-[0_18px_40px_rgba(23,40,70,0.18)] xl:grid-cols-[1fr_1.3fr_1fr]">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#8fa3c8]">
-            AI Operations
-          </p>
-          <h2 className="mt-2 text-[28px] font-semibold">
-            {event.aiOperations.overallReadinessPercent}% event ready
-          </h2>
-          <p className="mt-3 text-[15px] leading-6 text-[#c7d5ee]">
-            FightOps AI is monitoring this event, following up on routine work,
-            and surfacing only exceptional decisions.
-          </p>
+      <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)] lg:p-6">
+        <div className="flex flex-col gap-4 border-b border-border-subtle pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
+              Event readiness
+            </p>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h2 className="text-[30px] font-semibold tracking-tight text-text-strong">
+                {event.aiOperations.overallReadinessPercent}% ready
+              </h2>
+              <p className="text-sm text-text-body">
+                {event.fights} fights - {event.fighters} fighters
+              </p>
+            </div>
+            <div className="mt-4 h-2 max-w-[620px] overflow-hidden rounded-full bg-panel-strong">
+              <div
+                className="h-full rounded-full bg-brand"
+                style={{ width: `${event.aiOperations.overallReadinessPercent}%` }}
+              />
+            </div>
+          </div>
           <Link
             href={`/dashboard/promoter/events/${event.slug}/readiness`}
-            className="mt-5 inline-flex h-10 items-center justify-center rounded-[10px] border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/15"
+            className="inline-flex h-10 w-fit items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-semibold text-text-inverse transition hover:bg-brand-strong"
           >
-            Open readiness view
+            View readiness
           </Link>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <AiMetric
-            label="Completed by AI"
-            value={event.aiOperations.completedAutomatically}
-            tone="success"
-          />
-          <AiMetric
-            label="Currently handling"
-            value={event.aiOperations.activelyHandling}
-            tone="brand"
-          />
-          <AiMetric
-            label="Deadlines monitored"
-            value={event.aiOperations.monitoredDeadlines}
-            tone="warning"
-          />
-          <AiMetric
-            label="Human escalations"
-            value={event.aiOperations.escalatedIssues}
-            tone="danger"
-          />
-        </div>
-
-        <div className="rounded-[18px] border border-white/10 bg-white/8 p-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8fa3c8]">
-            Next follow-up
-          </p>
-          <p className="mt-3 text-[15px] leading-6 text-[#d8e4f7]">
-            {event.aiOperations.nextFollowUp}
-          </p>
-          <div className="mt-5 space-y-3">
-            {event.aiOperations.recentActivity.slice(0, 2).map((item) => (
-              <div key={item.id} className="flex gap-3">
-                <span className={`mt-2 h-2.5 w-2.5 rounded-full ${getAiDotClassName(item.tone)}`} />
-                <div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-sm text-[#b9c8e3]">{item.detail}</p>
-                </div>
-              </div>
-            ))}
+        <div className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1.2fr)]">
+          <ReadinessSummary title="Fight status" data={event.readiness.fights} />
+          <div className="hidden bg-border-subtle lg:block" />
+          <ReadinessSummary title="Fighter status" data={event.readiness.fighters} />
+          <div className="hidden bg-border-subtle lg:block" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Next follow-up
+            </p>
+            <p className="mt-3 text-[15px] leading-6 text-text-body">
+              {event.aiOperations.nextFollowUp}
+            </p>
+            {event.humanActionItems > 0 ? (
+              <p className="mt-4 text-sm font-medium text-danger">
+                {event.humanActionItems} decision{event.humanActionItems === 1 ? "" : "s"} need your review.
+              </p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -157,19 +134,19 @@ export function PromoterEventDetails({
         {event.bouts.map((bout) => (
           <article
             key={bout.id}
-            className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]"
+            className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]"
           >
             <FightHeroCard bout={bout} />
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-5 py-4">
               <Link
                 href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}`}
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
               >
                 Open details
               </Link>
               <Link
                 href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}/edit`}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong"
               >
                 <EditIcon className="h-4 w-4" />
                 <span>Edit Fight</span>
@@ -179,7 +156,7 @@ export function PromoterEventDetails({
         ))}
 
         {event.bouts.length === 0 ? (
-          <section className="rounded-[18px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+          <section className="rounded-[18px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[var(--shadow-card)]">
             <p className="text-[20px] font-semibold text-text-strong">
               No fights added yet
             </p>
@@ -222,52 +199,6 @@ function ReadinessSummary({
       </div>
     </div>
   );
-}
-
-function AiMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "success" | "brand" | "warning" | "danger";
-}) {
-  const colorClassName =
-    tone === "success"
-      ? "text-[#5be49b]"
-      : tone === "brand"
-        ? "text-[#8fb1ff]"
-        : tone === "warning"
-          ? "text-[#f7ba45]"
-          : "text-[#ff8a8a]";
-
-  return (
-    <div className="rounded-[16px] border border-white/10 bg-white/8 px-4 py-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8fa3c8]">
-        {label}
-      </p>
-      <p className={`mt-2 text-[30px] font-semibold ${colorClassName}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function getAiDotClassName(tone: "success" | "brand" | "warning" | "danger") {
-  if (tone === "success") {
-    return "bg-[#5be49b]";
-  }
-
-  if (tone === "brand") {
-    return "bg-[#8fb1ff]";
-  }
-
-  if (tone === "danger") {
-    return "bg-[#ff8a8a]";
-  }
-
-  return "bg-[#f7ba45]";
 }
 
 function EventTab({
@@ -338,7 +269,7 @@ function ReadinessRow({
       ? "bg-success"
       : tone === "warning"
         ? "bg-warning"
-        : "bg-[#7c3aed]";
+        : "bg-info";
 
   return (
     <div className="flex items-center justify-between gap-4 text-[15px] text-text-body">

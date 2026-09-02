@@ -7,11 +7,11 @@ export function HumanActionPriorityBadge({
 }) {
   const styles =
     priority === "critical"
-      ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+      ? "border-danger-border bg-danger-surface text-danger"
       : priority === "high"
-        ? "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]"
+        ? "border-warning-border bg-warning-surface text-warning"
         : priority === "medium"
-          ? "border-[#c9d9ff] bg-[#edf3ff] text-brand"
+          ? "border-brand-border bg-brand-surface-strong text-brand"
           : "border-border-subtle bg-panel-muted text-text-body";
 
   return (

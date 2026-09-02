@@ -341,14 +341,14 @@ export function PromoterSettingsPage({
           <>
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => handleSave("Organization settings saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
             >
               Save changes
             </button>
@@ -427,7 +427,7 @@ export function PromoterSettingsPage({
               <button
                 type="button"
                 onClick={() => handleSave("Password updated successfully.")}
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
               >
                 Change password
               </button>
@@ -449,7 +449,7 @@ export function PromoterSettingsPage({
                 setTemplateError(null);
                 setIsTemplateModalOpen(true);
               }}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong"
             >
               <PlusIcon className="h-4 w-4" />
               <span>Add Template</span>
@@ -471,7 +471,7 @@ export function PromoterSettingsPage({
                 className="space-y-4"
           >
             {templateError ? (
-              <div className="rounded-[12px] border border-[#ffc9c9] bg-[#fff2f2] px-4 py-3 text-[15px] text-danger">
+              <div className="rounded-[12px] border border-danger-border bg-danger-surface px-4 py-3 text-[15px] text-danger">
                 {templateError}
               </div>
             ) : null}
@@ -660,7 +660,7 @@ export function PromoterSettingsPage({
               <button
                 type="submit"
                 disabled={isSubmittingTemplate}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <PlusIcon className="h-4 w-4" />
                 <span>
@@ -680,7 +680,7 @@ export function PromoterSettingsPage({
             {templateState.map((template) => (
               <div
                 key={template.id}
-                className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-white px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
+                className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-panel px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -754,7 +754,7 @@ export function PromoterSettingsPage({
             ))}
 
             {templateState.length === 0 ? (
-              <div className="rounded-[14px] border border-dashed border-border-strong bg-white px-4 py-8 text-center">
+              <div className="rounded-[14px] border border-dashed border-border-strong bg-panel px-4 py-8 text-center">
                 <p className="text-[18px] font-semibold text-text-strong">
                   No templates configured
                 </p>
@@ -774,14 +774,14 @@ export function PromoterSettingsPage({
           <>
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => handleSave("Notification preferences saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
             >
               Save changes
             </button>
@@ -815,14 +815,14 @@ export function PromoterSettingsPage({
           <>
             <button
               type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => handleSave("AI verification settings saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
             >
               Save changes
             </button>
@@ -830,7 +830,7 @@ export function PromoterSettingsPage({
         }
       >
         <div className="space-y-6">
-          <div className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-white px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-panel px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-[18px] font-medium text-text-strong">
                 Automatic document verification
@@ -854,7 +854,7 @@ export function PromoterSettingsPage({
               {reviewTypes.map((type) => (
                 <label
                   key={type}
-                  className="flex items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-body"
+                  className="flex items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-body"
                 >
                   <input
                     type="checkbox"
@@ -949,7 +949,7 @@ function SettingsCard({
   footer?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <section className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
       <div className="flex flex-col gap-4 border-b border-border-subtle px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="text-[20px] font-semibold text-text-strong">{title}</h2>
@@ -980,8 +980,8 @@ function FormModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0f172a]/40 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--overlay)] px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[22px] border border-border-subtle bg-panel shadow-[var(--shadow-overlay)]">
         <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-5 py-4">
           <div>
             <h2 className="text-[20px] font-semibold text-text-strong">{title}</h2>
@@ -1009,9 +1009,14 @@ function SettingsField({
   label: string;
   children: ReactNode;
 }) {
+  const isOptional = label.toLowerCase().includes("optional");
+
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[15px] font-semibold text-text-strong">{label}</span>
+      <span className="text-[15px] font-semibold text-text-strong">
+        {label}
+        {!isOptional ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       {children}
     </label>
   );
@@ -1027,7 +1032,7 @@ function InlineCheckbox({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-body">
+    <label className="flex items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-body">
       <input
         name={name}
         type="checkbox"
@@ -1090,7 +1095,7 @@ function ToggleSwitch({
       }`}
     >
       <span
-        className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${
+        className={`inline-block h-5 w-5 rounded-full bg-panel shadow transition ${
           checked ? "translate-x-5" : "translate-x-0.5"
         }`}
       />
@@ -1107,10 +1112,10 @@ function InfoTag({
 }) {
   const styles =
     tone === "critical"
-      ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+      ? "border-danger-border bg-danger-surface text-danger"
       : tone === "high"
-        ? "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]"
-        : "border-[#dce7ff] bg-[#f2f6ff] text-brand";
+        ? "border-warning-border bg-warning-surface text-warning"
+        : "border-brand-border bg-brand-surface-muted text-brand";
 
   return (
     <span className={`inline-flex rounded-[8px] border px-2 py-1 text-xs font-medium ${styles}`}>
@@ -1120,10 +1125,10 @@ function InfoTag({
 }
 
 const inputClassName =
-  "h-11 w-full rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "h-11 w-full rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 const textareaClassName =
-  "w-full rounded-[12px] border border-border-subtle bg-white px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
+  "w-full rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
 
 function UploadIcon({ className }: { className?: string }) {
   return (

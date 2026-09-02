@@ -43,7 +43,7 @@ export function HumanActionCasePage({
 
       <div className="grid gap-6 xl:grid-cols-[1.75fr_0.85fr]">
         <div className="space-y-5">
-          <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+          <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
             <div className="flex flex-col gap-4 border-b border-border-subtle px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
                 <div>
@@ -63,13 +63,13 @@ export function HumanActionCasePage({
             </div>
 
             <div className="flex flex-wrap items-center gap-6 px-5 py-4 text-[15px]">
-              <span className="font-medium text-[#7c3aed]">{item.confidenceScore}</span>
+              <span className="font-medium text-info">{item.confidenceScore}</span>
               <span className="text-text-muted">Created {item.createdAt}</span>
             </div>
           </section>
 
           <DetailCard title="Document Preview">
-            <div className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-panel px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-[12px] bg-panel-muted text-text-muted">
                   <DocumentIcon className="h-6 w-6" />
@@ -84,7 +84,7 @@ export function HumanActionCasePage({
 
               <button
                 type="button"
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
               >
                 Open
               </button>
@@ -109,9 +109,9 @@ export function HumanActionCasePage({
           </CalloutCard>
         </div>
 
-        <aside className="rounded-[18px] border border-[#e7ddff] bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <aside className="rounded-[18px] border border-info-soft-border bg-panel p-5 shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3">
-            <ShieldIcon className="h-5 w-5 text-[#7c3aed]" />
+            <ShieldIcon className="h-5 w-5 text-info" />
             <h2 className="text-[22px] font-semibold text-text-strong">
               Human Decision
             </h2>
@@ -122,8 +122,8 @@ export function HumanActionCasePage({
           </p>
 
           {isResolved ? (
-            <div className="mt-5 rounded-[16px] border border-[#c6eed7] bg-[#f1fcf5] p-4 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-success shadow-[0_2px_10px_rgba(15,159,110,0.12)]">
+            <div className="mt-5 rounded-[16px] border border-success-border-strong bg-success-surface-soft p-4 text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-panel text-success shadow-[var(--shadow-success)]">
                 <CheckIcon className="h-5 w-5" />
               </div>
               <p className="mt-4 text-[24px] font-semibold text-success">Case resolved</p>
@@ -132,7 +132,7 @@ export function HumanActionCasePage({
               </p>
               <Link
                 href="/dashboard/promoter/human-action"
-                className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
               >
                 Back to queue
               </Link>
@@ -142,13 +142,13 @@ export function HumanActionCasePage({
               <button
                 type="button"
                 onClick={() => handleResolve("Extracted value approved and case resolved.")}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-success px-4 text-[15px] font-medium text-white transition hover:opacity-90"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-success px-4 text-[15px] font-medium text-text-inverse transition hover:opacity-90"
               >
                 <CheckIcon className="h-4 w-4" />
                 <span>Approve extracted value</span>
               </button>
 
-              <div className="rounded-[14px] border border-border-subtle bg-white p-3">
+              <div className="rounded-[14px] border border-border-subtle bg-panel p-3">
                 <label className="flex flex-col gap-2">
                   <span className="text-[15px] font-medium text-text-strong">
                     Correct value
@@ -157,7 +157,7 @@ export function HumanActionCasePage({
                     value={correctValue}
                     onChange={(event) => setCorrectValue(event.target.value)}
                     placeholder="Enter correct value"
-                    className="h-11 rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand"
+                    className="h-11 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand"
                   />
                 </label>
                 <button
@@ -169,7 +169,7 @@ export function HumanActionCasePage({
                         : "Correct value accepted and case resolved.",
                     )
                   }
-                  className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                  className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
                 >
                   <ShieldIcon className="h-4 w-4 text-text-body" />
                   <span>Correct & accept</span>
@@ -200,7 +200,7 @@ export function HumanActionCasePage({
               <button
                 type="button"
                 onClick={() => handleAction("Case rejected and routed for follow-up.")}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-[#f43f3f] px-4 text-[15px] font-medium text-white transition hover:opacity-90"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-danger-action px-4 text-[15px] font-medium text-text-inverse transition hover:opacity-90"
               >
                 <CloseIcon className="h-4 w-4" />
                 <span>Reject</span>
@@ -208,7 +208,7 @@ export function HumanActionCasePage({
               <button
                 type="button"
                 onClick={() => handleResolve("Case resolved and audit log updated.")}
-                className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-brand px-4 text-[15px] font-medium text-white transition hover:bg-brand-strong"
+                className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-brand px-4 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
               >
                 Resolve case
               </button>
@@ -228,7 +228,7 @@ function DetailCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <section className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
         {title}
       </p>
@@ -248,9 +248,9 @@ function ComparisonCard({
 }) {
   return (
     <section
-      className={`rounded-[18px] border p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)] ${
+      className={`rounded-[18px] border p-5 shadow-[var(--shadow-card)] ${
         tone === "blue"
-          ? "border-[#cfe0ff] bg-[#f7fbff]"
+          ? "border-info-border bg-info-surface"
           : "border-border-subtle bg-panel"
       }`}
     >
@@ -286,14 +286,14 @@ function CalloutCard({
 }) {
   const styles =
     tone === "warning"
-      ? "border-[#ffe1ad] bg-[#fffaf0]"
-      : "border-[#bfeef4] bg-[#f3fdff]";
+      ? "border-warning-border-soft bg-warning-surface-pale"
+      : "border-teal-border bg-teal-surface-strong";
 
-  const labelStyles = tone === "warning" ? "text-warning" : "text-[#0ea5b7]";
+  const labelStyles = tone === "warning" ? "text-warning" : "text-teal-strong";
 
   return (
     <section
-      className={`rounded-[18px] border p-4 shadow-[0_10px_24px_rgba(23,32,51,0.03)] ${styles}`}
+      className={`rounded-[18px] border p-4 shadow-[var(--shadow-card)] ${styles}`}
     >
       <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${labelStyles}`}>
         {title}
@@ -316,7 +316,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+      className="inline-flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
     >
       <span className="text-text-body">{icon}</span>
       <span>{label}</span>

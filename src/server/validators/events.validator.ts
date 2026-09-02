@@ -6,7 +6,9 @@ export function validateCreateEventInput(input: CreateEventInput) {
   assertName(input.name);
   assertDate(input.date);
   assertLocation(input.location);
-  assertStatus(input.status);
+  if (typeof input.status !== "undefined") {
+    assertStatus(input.status);
+  }
   assertNote(input.note);
 }
 

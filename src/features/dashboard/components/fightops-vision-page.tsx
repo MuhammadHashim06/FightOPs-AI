@@ -92,24 +92,24 @@ const humanControls = [
 ];
 
 const statusStyles = {
-  "In progress": "border-[#b7cdfd] bg-[#edf4ff] text-brand",
-  Next: "border-[#fde2a8] bg-[#fff7e8] text-warning",
+  "In progress": "border-brand-border-strong bg-brand-surface-soft text-brand",
+  Next: "border-warning-border-muted bg-warning-surface-strong text-warning",
   Planned: "border-border-subtle bg-panel-muted text-text-body",
 };
 
 export function FightOpsVisionPage() {
   return (
     <main className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-border-subtle bg-[#111f38] text-white shadow-[0_24px_60px_rgba(17,31,56,0.22)]">
+      <section className="overflow-hidden rounded-[28px] border border-border-subtle bg-surface-dark-strong text-text-inverse shadow-[var(--shadow-vision-hero)]">
         <div className="grid gap-8 p-6 lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.26em] text-[#91a7cf]">
+            <p className="text-sm font-semibold uppercase tracking-[0.26em] text-surface-dark-muted-strong">
               FightOps AI Vision
             </p>
             <h1 className="mt-3 max-w-[760px] text-[34px] font-semibold leading-tight tracking-tight sm:text-[46px]">
               The operating system for fight promotion workflows.
             </h1>
-            <p className="mt-4 max-w-[720px] text-[17px] leading-7 text-[#c9d8f2]">
+            <p className="mt-4 max-w-[720px] text-[17px] leading-7 text-surface-dark-body-soft">
               FightOps AI should not just store documents. It should trigger the
               whole operational process after a fight is scheduled, keep reminders
               moving every day, and escalate only the decisions that need a human.
@@ -122,17 +122,17 @@ export function FightOpsVisionPage() {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-white/8 p-5">
+          <div className="rounded-[24px] border border-text-inverse/10 bg-panel/8 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#91a7cf]">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-surface-dark-muted-strong">
                   Operations Core
                 </p>
                 <h2 className="mt-2 text-[24px] font-semibold">
                   From scheduling to fight night
                 </h2>
               </div>
-              <span className="rounded-full border border-[#55d6b7]/40 bg-[#55d6b7]/12 px-3 py-1 text-xs font-semibold text-[#91ffe5]">
+              <span className="rounded-full border border-ai-pill-base/40 bg-ai-pill-base/12 px-3 py-1 text-xs font-semibold text-ai-pill">
                 AI monitored
               </span>
             </div>
@@ -141,12 +141,12 @@ export function FightOpsVisionPage() {
               {automationSteps.map((step, index) => (
                 <div
                   key={step}
-                  className="flex items-center gap-3 rounded-[16px] border border-white/10 bg-white/8 px-4 py-3"
+                  className="flex items-center gap-3 rounded-[16px] border border-text-inverse/10 bg-panel/8 px-4 py-3"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-white">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-text-inverse">
                     {index + 1}
                   </span>
-                  <span className="text-sm font-medium text-[#edf4ff]">{step}</span>
+                  <span className="text-sm font-medium text-brand-surface-soft">{step}</span>
                 </div>
               ))}
             </div>
@@ -158,7 +158,7 @@ export function FightOpsVisionPage() {
         {humanControls.map((control) => (
           <article
             key={control}
-            className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]"
+            className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]"
           >
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-sidebar-accent text-brand">
               <CheckIcon className="h-5 w-5" />
@@ -168,7 +168,7 @@ export function FightOpsVisionPage() {
         ))}
       </section>
 
-      <section className="rounded-[24px] border border-border-subtle bg-panel p-5 shadow-[0_12px_30px_rgba(23,32,51,0.04)]">
+      <section className="rounded-[24px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card-strong)]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -189,7 +189,7 @@ export function FightOpsVisionPage() {
           {operationModules.map((module) => (
             <article
               key={module.title}
-              className="rounded-[18px] border border-border-subtle bg-panel-muted p-5 transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(23,32,51,0.08)]"
+              className="rounded-[18px] border border-border-subtle bg-panel-muted p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover-card)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-[17px] font-semibold text-text-strong">
@@ -212,7 +212,7 @@ export function FightOpsVisionPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <article className="rounded-[22px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[22px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
             Reminder Logic
           </p>
@@ -227,7 +227,7 @@ export function FightOpsVisionPage() {
           </p>
         </article>
 
-        <article className="rounded-[22px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[22px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
             Document Storage
           </p>
@@ -248,11 +248,11 @@ export function FightOpsVisionPage() {
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[18px] border border-white/10 bg-white/8 px-4 py-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#91a7cf]">
+    <div className="rounded-[18px] border border-text-inverse/10 bg-panel/8 px-4 py-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-surface-dark-muted-strong">
         {label}
       </p>
-      <p className="mt-2 text-[24px] font-semibold text-white">{value}</p>
+      <p className="mt-2 text-[24px] font-semibold text-text-inverse">{value}</p>
     </div>
   );
 }

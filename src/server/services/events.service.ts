@@ -27,7 +27,7 @@ export type DashboardEventSummary = {
   location: string;
   fights: number;
   fighters: number;
-  status: "draft" | "upcoming" | "active";
+  status: "draft" | "upcoming" | "active" | "completed";
   waitingItems: number;
   humanActionItems: number;
 };
@@ -260,10 +260,7 @@ const defaultTabs = [
   "Fighters",
   "Event Readiness",
   "Required Documents",
-  "Human Action",
   "Post Reminders",
-  "Event Knowledge",
-  "Communications",
 ];
 const CURRENT_LOCAL_DATE = "2026-08-31T00:00:00.000Z";
 
@@ -283,9 +280,11 @@ export async function createEvent(input: CreateEventInput, createdByUserId: stri
   validateCreateEventInput(input);
 
   const slug = await createUniqueSlug(input.name);
+  const status = resolveEventStatus(input.date);
 
   const event = await eventsRepository.createEvent({
     ...input,
+    status,
     slug,
     createdByUserId,
   });
@@ -304,9 +303,11 @@ export async function updateEvent(eventId: string, input: UpdateEventInput) {
   validateUpdateEventInput(input);
 
   const slug = input.name ? await createUniqueSlug(input.name, eventId) : undefined;
+  const status = input.date ? resolveEventStatus(input.date) : input.status;
 
   return eventsRepository.updateEvent(eventId, {
     ...input,
+    status,
     slug,
   });
 }
@@ -317,6 +318,7 @@ export async function deleteEvent(eventId: string) {
 
 export async function listPromoterDashboardEvents(): Promise<DashboardEventSummary[]> {
   const events = await eventsRepository.listEvents();
+  const activeEventId = findCurrentEventId(events);
 
   return Promise.all(
     events.map(async (event) => {
@@ -331,7 +333,7 @@ export async function listPromoterDashboardEvents(): Promise<DashboardEventSumma
         location: event.location,
         fights: metrics.fights,
         fighters: metrics.fighters,
-        status: event.status === "completed" ? "active" : event.status,
+        status: resolveDashboardEventStatus(event.date, event.id === activeEventId),
         waitingItems: 0,
         humanActionItems: 0,
       };
@@ -339,21 +341,70 @@ export async function listPromoterDashboardEvents(): Promise<DashboardEventSumma
   );
 }
 
+function findCurrentEventId(events: Array<{ id: string; date: string }>) {
+  const today = new Date();
+  const todayTime = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+
+  return events
+    .filter((event) => startOfDayIso(event.date) >= todayTime)
+    .sort((left, right) => startOfDayIso(left.date) - startOfDayIso(right.date))[0]?.id;
+}
+
+function resolveDashboardEventStatus(
+  date: string,
+  isCurrentEvent: boolean,
+): DashboardEventSummary["status"] {
+  const today = new Date();
+  const todayTime = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+  const eventTime = startOfDayIso(date);
+
+  if (eventTime < todayTime) {
+    return "completed";
+  }
+
+  return isCurrentEvent ? "active" : "upcoming";
+}
+
 export async function getPromoterOverviewStats(): Promise<DashboardOverviewStats> {
   const events = await listPromoterDashboardEvents();
-  const totalEvents = events.length;
-  const totalFights = events.reduce((sum, event) => sum + event.fights, 0);
   const totalFighters = events.reduce((sum, event) => sum + event.fighters, 0);
+  const activeEvent = events.find((event) => event.status === "active") ?? events[0];
+  const requirementGroups = await Promise.all(
+    events.map((event) => fighterRequirementsRepository.listByEventId(event.id)),
+  );
+  const requirements = requirementGroups.flat();
+  const waitingItems = requirements.filter((requirement) =>
+    ["WAITING", "PROCESSING", "NEEDS_RESUBMISSION"].includes(requirement.status),
+  ).length;
+  const humanActionItems = requirements.filter(
+    (requirement) => requirement.status === "HUMAN_ACTION",
+  ).length;
 
   return [
-    { label: "Events", value: String(totalEvents), hint: "across promotion" },
-    { label: "Fights", value: String(totalFights), hint: "on the card" },
-    { label: "Fighters", value: String(totalFighters), hint: "assigned to events" },
-    { label: "Waiting", value: "0", hint: "awaiting items", tone: "warning" },
+    {
+      label: "Active Event",
+      value: activeEvent ? activeEvent.name : "None",
+      hint: activeEvent ? activeEvent.date : "create an event",
+    },
+    { label: "Fighters", value: String(totalFighters), hint: "assigned" },
+    {
+      label: "Waiting",
+      value: String(waitingItems),
+      hint: "items in progress",
+      tone: "warning",
+    },
     {
       label: "Human Action",
-      value: "0",
-      hint: "cases need review",
+      value: String(humanActionItems),
+      hint: "needs review",
       tone: "highlight",
     },
   ];
@@ -1672,4 +1723,24 @@ function formatDateTimeLabel(isoDate: string) {
 function startOfDayIso(isoDate: string) {
   const date = new Date(isoDate);
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function resolveEventStatus(date: string): NonNullable<CreateEventInput["status"]> {
+  const today = new Date();
+  const todayTime = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+  const eventTime = startOfDayIso(date);
+
+  if (eventTime < todayTime) {
+    return "completed";
+  }
+
+  if (eventTime === todayTime) {
+    return "active";
+  }
+
+  return "upcoming";
 }

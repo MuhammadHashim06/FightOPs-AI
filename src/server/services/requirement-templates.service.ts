@@ -6,7 +6,7 @@ import { eventRequirementsRepository } from "@/server/repositories/event-require
 import { requirementTemplatesRepository } from "@/server/repositories/requirement-templates.repository";
 import { validateCreateRequirementTemplateInput } from "@/server/validators/readiness.validator";
 
-const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
+export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
   {
     category: "Legal",
     name: "Passport / ID",
@@ -369,16 +369,7 @@ const workflowTimelineUpgrades: Record<
 export async function listRequirementTemplatesForUser(ownerUserId: string) {
   let templates = await requirementTemplatesRepository.listByOwnerUserId(ownerUserId);
 
-  if (templates.length === 0) {
-    for (const [index, template] of defaultRequirementTemplates.entries()) {
-      await requirementTemplatesRepository.create(ownerUserId, {
-        ...template,
-        sortOrder: index + 1,
-      });
-    }
-
-    templates = await requirementTemplatesRepository.listByOwnerUserId(ownerUserId);
-  } else {
+  if (templates.length > 0) {
     templates = await upgradeLegacyDefaultTimelines(ownerUserId, templates);
   }
 
@@ -425,10 +416,9 @@ export async function applyRequirementTemplatesToEvent(params: {
   templateIds?: string[];
 }) {
   const templates = await listRequirementTemplatesForUser(params.ownerUserId);
-  const selectedTemplates =
-    Array.isArray(params.templateIds) && params.templateIds.length > 0
-      ? templates.filter((template) => params.templateIds?.includes(template.id))
-      : templates;
+  const selectedTemplates = Array.isArray(params.templateIds)
+    ? templates.filter((template) => params.templateIds?.includes(template.id))
+    : templates;
 
   for (const template of selectedTemplates) {
     await eventRequirementsRepository.create(params.eventId, {

@@ -24,7 +24,7 @@ export function PromoterFightActions({
               variant: "success",
             })
           }
-          className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#b8cbff] bg-[#eef3ff] px-4 text-sm font-medium text-brand transition hover:bg-[#e5eeff]"
+          className="inline-flex h-10 items-center justify-center rounded-[10px] border border-brand-border bg-brand-surface-strong px-4 text-sm font-medium text-brand transition hover:bg-brand-soft"
         >
           Re-invite
         </button>
@@ -39,7 +39,7 @@ export function PromoterFightActions({
               variant: "error",
             })
           }
-          className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#f7c4c0] bg-[#fff1f1] px-4 text-sm font-medium text-[#d92d20] transition hover:bg-[#ffe8e8]"
+          className="inline-flex h-10 items-center justify-center rounded-[10px] border border-danger-border bg-danger-surface px-4 text-sm font-medium text-danger-strong transition hover:bg-danger-surface-strong"
         >
           Remove / Replace
         </button>

@@ -11,8 +11,8 @@ type AuthScreenProps = {
   title: string;
   description: string;
   form: ReactNode;
-  footerPrompt: string;
-  footerAction: AuthLink;
+  footerPrompt?: string;
+  footerAction?: AuthLink;
   auxiliaryLinks?: AuthLink[];
 };
 
@@ -27,7 +27,7 @@ export function AuthScreen({
   return (
     <main className="grid w-full max-w-6xl gap-0 overflow-hidden rounded-[var(--radius-card)] border border-border-subtle bg-panel shadow-[var(--shadow-soft)] lg:grid-cols-[1.02fr_0.98fr]">
       <section className="border-b border-border-subtle bg-panel-muted p-8 sm:p-12 lg:border-b-0 lg:border-r">
-        <div className="mx-auto flex max-w-xl flex-col items-center space-y-6 text-center">
+        <div className="mx-auto flex max-w-xl flex-col items-center justify-center space-y-6 text-center lg:min-h-[420px]">
           <div className="flex justify-center">
             <Image
               src="/brand/logo.png"
@@ -45,20 +45,6 @@ export function AuthScreen({
             <p className="text-base leading-7 text-text-body sm:text-lg">
               {description}
             </p>
-          </div>
-        </div>
-
-        <div className="mt-10 rounded-[var(--radius-pill)] border border-border-subtle bg-panel p-5">
-          <p className="text-sm uppercase tracking-[0.2em] text-text-muted">
-            Stay organized
-          </p>
-          <div className="mt-4 grid gap-3 text-sm text-text-body sm:grid-cols-2">
-            <div className="rounded-[var(--radius-pill)] bg-panel-muted p-4">
-              Keep everything in one clean workspace with simple access and clear updates.
-            </div>
-            <div className="rounded-[var(--radius-pill)] bg-panel-muted p-4">
-              Move faster with a focused experience for sign-in, recovery, and account setup.
-            </div>
           </div>
         </div>
       </section>
@@ -81,15 +67,17 @@ export function AuthScreen({
             </div>
           ) : null}
 
-          <p className="text-sm text-text-body">
-            {footerPrompt}{" "}
-            <Link
-              href={footerAction.href}
-              className="font-semibold text-brand transition hover:text-brand-strong"
-            >
-              {footerAction.label}
-            </Link>
-          </p>
+          {footerPrompt && footerAction ? (
+            <p className="text-sm text-text-body">
+              {footerPrompt}{" "}
+              <Link
+                href={footerAction.href}
+                className="font-semibold text-brand transition hover:text-brand-strong"
+              >
+                {footerAction.label}
+              </Link>
+            </p>
+          ) : null}
         </div>
       </section>
     </main>

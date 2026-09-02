@@ -89,13 +89,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
   return (
     <aside className="sticky top-0 flex h-screen w-[250px] shrink-0 flex-col overflow-hidden rounded-r-[24px] border-r border-border-subtle bg-sidebar shadow-[var(--shadow-soft)]">
       <div className="shrink-0 border-b border-border-subtle px-4 py-4">
-        <div className="flex h-13 items-center justify-center rounded-[14px] bg-[#05070b] px-4">
+        <div className="flex h-13 items-center justify-center rounded-[14px] bg-panel px-2">
           <Image
             src="/brand/logo.png"
             alt="FightOps AI"
-            width={170}
+            width={190}
             height={42}
-            className="h-auto w-[170px] object-contain"
+            className="h-auto w-[190px] object-contain"
             priority
           />
         </div>

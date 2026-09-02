@@ -15,8 +15,8 @@ export default async function ResetPasswordPage({
 
   return (
     <AuthScreen
-      title="Reset your password."
-      description="Choose a new password to finish resetting your account."
+      title="Reset your password"
+      description="Choose a new password."
       footerPrompt="Need a new link?"
       footerAction={{ href: "/auth/forgot-password", label: "Request reset email" }}
       form={<ResetPasswordForm token={token} email={email} />}

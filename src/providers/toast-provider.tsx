@@ -123,13 +123,13 @@ function ToastCard({
   const toneClassName = useMemo(() => {
     switch (toast.variant) {
       case "success":
-        return "border-success/20 bg-[rgba(15,159,110,0.1)] text-success";
+        return "border-success/20 bg-[var(--toast-success-bg)] text-success";
       case "error":
-        return "border-danger/20 bg-[rgba(220,76,100,0.1)] text-danger";
+        return "border-danger/20 bg-[var(--toast-danger-bg)] text-danger";
       case "warning":
-        return "border-warning/20 bg-[rgba(217,119,6,0.1)] text-warning";
+        return "border-warning/20 bg-[var(--toast-warning-bg)] text-warning";
       default:
-        return "border-brand/20 bg-[rgba(47,107,255,0.1)] text-brand";
+        return "border-brand/20 bg-[var(--toast-brand-bg)] text-brand";
     }
   }, [toast.variant]);
 
@@ -137,10 +137,10 @@ function ToastCard({
     <div
       role="status"
       aria-live="polite"
-      className={`toast-enter pointer-events-auto relative overflow-hidden rounded-[22px] border shadow-[0_22px_50px_rgba(23,32,51,0.14)] backdrop-blur-xl ${toneClassName}`}
+      className={`toast-enter pointer-events-auto relative overflow-hidden rounded-[22px] border shadow-[var(--shadow-toast)] backdrop-blur-xl ${toneClassName}`}
     >
       <div className="flex items-start gap-3 px-4 py-3.5">
-        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 ring-1 ring-current/10">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel/70 ring-1 ring-current/10">
           <div className="h-2.5 w-2.5 rounded-full bg-current" />
         </div>
         <p className="flex-1 pr-2 pt-1 text-sm font-semibold leading-6">
@@ -149,7 +149,7 @@ function ToastCard({
         <button
           type="button"
           onClick={() => onDismiss(toast.id)}
-          className="mt-1 rounded-full p-1 text-current/60 transition hover:bg-white/50 hover:text-current"
+          className="mt-1 rounded-full p-1 text-current/60 transition hover:bg-panel/50 hover:text-current"
           aria-label="Dismiss notification"
         >
           <svg

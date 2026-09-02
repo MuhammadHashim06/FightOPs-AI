@@ -24,6 +24,19 @@ type RemoveModalState = {
   fighterName: string;
 } | null;
 
+const weightClassOptions = [
+  "Strawweight",
+  "Flyweight",
+  "Bantamweight",
+  "Featherweight",
+  "Lightweight",
+  "Welterweight",
+  "Middleweight",
+  "Light Heavyweight",
+  "Heavyweight",
+  "Catchweight",
+];
+
 export function EditFightPage({
   fight,
 }: {
@@ -32,7 +45,11 @@ export function EditFightPage({
   const router = useRouter();
   const { showToast } = useToast();
   const [editingSide, setEditingSide] = useState<FightSide | null>(null);
-  const [division, setDivision] = useState(fight.bout.division);
+  const [division, setDivision] = useState(() =>
+    weightClassOptions.includes(fight.bout.division)
+      ? fight.bout.division
+      : "Lightweight",
+  );
   const [fighterA, setFighterA] = useState(() => mapInitialFighterState(fight, 0));
   const [fighterB, setFighterB] = useState(() => mapInitialFighterState(fight, 1));
   const [isSavingDivision, setIsSavingDivision] = useState(false);
@@ -52,8 +69,8 @@ export function EditFightPage({
         },
         body: JSON.stringify({
           division,
-          fighterA: buildPayload(fighterA),
-          fighterB: buildPayload(fighterB),
+          fighterA: buildPayload(fighterA, division),
+          fighterB: buildPayload(fighterB, division),
         }),
       });
       const result = await response.json();
@@ -216,7 +233,7 @@ export function EditFightPage({
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/dashboard/promoter/events/${fight.eventSlug}/edit-fight-card`}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-white px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
           >
             Reorder card
           </Link>
@@ -241,20 +258,25 @@ export function EditFightPage({
         <div className="flex flex-col gap-3 rounded-[16px] border border-border-subtle bg-panel px-4 py-3 sm:min-w-[280px]">
           <label className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-              Fight division
+              Weight class <span className="text-danger">*</span>
             </span>
-            <input
-              type="text"
+            <select
               value={division}
               onChange={(event) => setDivision(event.target.value)}
-              className={inputClassName}
-            />
+              className={`${inputClassName} appearance-none`}
+            >
+              {weightClassOptions.map((weightClass) => (
+                <option key={weightClass} value={weightClass}>
+                  {weightClass}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             type="button"
             onClick={handleDivisionSave}
             disabled={isSavingDivision}
-            className="inline-flex h-10 items-center justify-center rounded-[12px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center rounded-[12px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSavingDivision ? "Saving..." : "Save division"}
           </button>
@@ -267,7 +289,6 @@ export function EditFightPage({
           sideLabel="Fighter A"
           fighter={fight.fighterOverviews[0]}
           value={fighterA}
-          parentDivision={division}
           isEditing={editingSide === "fighterA" || !fight.fighterOverviews[0]?.fighterId}
           isSaving={savingSide === "fighterA"}
           isReinviting={reinvitingSide === "fighterA"}
@@ -291,7 +312,6 @@ export function EditFightPage({
           sideLabel="Fighter B"
           fighter={fight.fighterOverviews[1]}
           value={fighterB}
-          parentDivision={division}
           isEditing={editingSide === "fighterB" || !fight.fighterOverviews[1]?.fighterId}
           isSaving={savingSide === "fighterB"}
           isReinviting={reinvitingSide === "fighterB"}
@@ -329,7 +349,6 @@ function FighterEditorCard({
   sideLabel,
   fighter,
   value,
-  parentDivision,
   isEditing,
   isSaving,
   isReinviting,
@@ -343,7 +362,6 @@ function FighterEditorCard({
   sideLabel: string;
   fighter: PromoterFightDetailData["fighterOverviews"][number] | undefined;
   value: FighterFormState;
-  parentDivision: string;
   isEditing: boolean;
   isSaving: boolean;
   isReinviting: boolean;
@@ -360,9 +378,9 @@ function FighterEditorCard({
 
   return (
     <section
-      className={`rounded-[20px] border bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)] transition ${
+      className={`rounded-[20px] border bg-panel p-5 shadow-[var(--shadow-card)] transition ${
         isEditing
-          ? "border-brand bg-[linear-gradient(180deg,rgba(238,243,255,0.55),rgba(255,255,255,1))] shadow-[0_16px_40px_rgba(41,98,255,0.12)]"
+          ? "border-brand bg-[var(--edit-active-gradient)] shadow-[var(--shadow-focus-card)]"
           : "border-border-subtle"
       }`}
     >
@@ -385,8 +403,8 @@ function FighterEditorCard({
           onClick={onEditToggle}
           className={`inline-flex h-10 w-10 items-center justify-center rounded-[12px] border transition ${
             isEditing
-              ? "border-brand bg-[#eef3ff] text-brand"
-              : "border-border-subtle bg-white text-text-strong hover:bg-panel-muted"
+              ? "border-brand bg-brand-surface-strong text-brand"
+              : "border-border-subtle bg-panel text-text-strong hover:bg-panel-muted"
           }`}
           aria-label={`Edit ${sideLabel}`}
         >
@@ -416,13 +434,7 @@ function FighterEditorCard({
           onChange={(nextValue) => onChange("fullName", nextValue)}
           disabled={!isEditing}
           placeholder="Full name"
-        />
-        <Field
-          label="Weight class"
-          value={value.division}
-          onChange={(nextValue) => onChange("division", nextValue)}
-          disabled={!isEditing}
-          placeholder={parentDivision || "e.g. Lightweight"}
+          required
         />
         <Field
           label="Contact name"
@@ -430,6 +442,7 @@ function FighterEditorCard({
           onChange={(nextValue) => onChange("managerName", nextValue)}
           disabled={!isEditing}
           placeholder="Manager name"
+          required
         />
         <Field
           label="Contact email"
@@ -438,6 +451,7 @@ function FighterEditorCard({
           disabled={!isEditing || emailReadOnly}
           placeholder="contact@example.com"
           type="email"
+          required
           helperText={
             emailReadOnly
               ? "Email cannot be edited. Remove this fighter and add a new one to change it."
@@ -467,7 +481,7 @@ function FighterEditorCard({
               type="button"
               onClick={onReinvite}
               disabled={isReinviting}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#b8cbff] bg-[#eef3ff] px-4 text-sm font-medium text-brand transition hover:bg-[#e5eeff] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-brand-border bg-brand-surface-strong px-4 text-sm font-medium text-brand transition hover:bg-brand-soft disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isReinviting ? "Sending..." : "Re-invite"}
             </button>
@@ -477,7 +491,7 @@ function FighterEditorCard({
             <button
               type="button"
               onClick={onRemove}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[#f7c4c0] bg-[#fff1f1] px-4 text-sm font-medium text-[#d92d20] transition hover:bg-[#ffe8e8]"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-danger-border bg-danger-surface px-4 text-sm font-medium text-danger-strong transition hover:bg-danger-surface-strong"
             >
               Remove fighter
             </button>
@@ -488,7 +502,7 @@ function FighterEditorCard({
           type="button"
           onClick={onSave}
           disabled={!isEditing || !canSave || isSaving}
-          className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-medium text-white transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSaving
             ? "Saving..."
@@ -508,6 +522,7 @@ function Field({
   disabled,
   placeholder,
   helperText,
+  required = false,
   type = "text",
 }: {
   label: string;
@@ -516,11 +531,15 @@ function Field({
   disabled: boolean;
   placeholder: string;
   helperText?: string;
+  required?: boolean;
   type?: "text" | "email";
 }) {
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[15px] font-semibold text-text-strong">{label}</span>
+      <span className="text-[15px] font-semibold text-text-strong">
+        {label}
+        {required ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       <input
         type={type}
         value={value}
@@ -546,7 +565,7 @@ function InfoCell({
   value: string;
 }) {
   return (
-    <div className="rounded-[14px] border border-border-subtle bg-white px-4 py-4">
+    <div className="rounded-[14px] border border-border-subtle bg-panel px-4 py-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
         {label}
       </p>
@@ -567,8 +586,8 @@ function ConfirmRemoveModal({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(7,13,24,0.45)] px-4">
-      <div className="w-full max-w-[480px] rounded-[24px] border border-border-subtle bg-white p-6 shadow-[0_24px_80px_rgba(18,36,63,0.22)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--modal-overlay)] px-4">
+      <div className="w-full max-w-[480px] rounded-[24px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-confirm)]">
         <h2 className="text-[24px] font-semibold text-text-strong">Remove fighter?</h2>
         <p className="mt-3 text-[15px] leading-7 text-text-body">
           {fighterName} will be removed from this fight. Invite status, signed
@@ -579,7 +598,7 @@ function ConfirmRemoveModal({
             type="button"
             onClick={onCancel}
             disabled={isRemoving}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-white px-5 text-sm font-medium text-text-strong transition hover:bg-panel-muted disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-5 text-sm font-medium text-text-strong transition hover:bg-panel-muted disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
@@ -587,7 +606,7 @@ function ConfirmRemoveModal({
             type="button"
             onClick={onConfirm}
             disabled={isRemoving}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] bg-danger px-5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-[12px] bg-danger px-5 text-sm font-medium text-text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isRemoving ? "Removing..." : "Yes, remove"}
           </button>
@@ -623,7 +642,7 @@ function sanitizeValue(value: string, fallback = "") {
   return value;
 }
 
-function buildPayload(input: FighterFormState) {
+function buildPayload(input: FighterFormState, parentDivision?: string) {
   const hasValue = Object.values(input).some((value) => value.trim().length > 0);
 
   if (!hasValue) {
@@ -632,7 +651,7 @@ function buildPayload(input: FighterFormState) {
 
   return {
     fullName: input.fullName,
-    division: input.division,
+    division: parentDivision ?? input.division,
     managerName: input.managerName,
     managerEmail: input.managerEmail,
     managerPhone: input.managerPhone,
@@ -683,7 +702,7 @@ function canSaveFighter(input: FighterFormState, isEmptySlot: boolean) {
 }
 
 const inputClassName =
-  "h-11 w-full rounded-[12px] border border-border-subtle bg-white px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand disabled:cursor-not-allowed";
+  "h-11 w-full rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand disabled:cursor-not-allowed";
 
 function StatusPill({
   label,
@@ -694,8 +713,8 @@ function StatusPill({
 }) {
   const className =
     tone === "success"
-      ? "border-[#b7ead1] bg-[#ecfbf2] text-success"
-      : "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]";
+      ? "border-success-border bg-success-surface text-success"
+      : "border-warning-border bg-warning-surface text-warning";
 
   return (
     <span className={`inline-flex rounded-[10px] border px-3 py-1 text-sm font-medium ${className}`}>

@@ -26,18 +26,18 @@ export function PromoterOverview({
 
         <Link
           href="/dashboard/promoter/events/create"
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,107,255,0.24)] transition hover:bg-brand-strong"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-brand px-5 text-sm font-semibold text-text-inverse shadow-[var(--shadow-button)] transition hover:bg-brand-strong"
         >
           <PlusIcon className="h-4 w-4" />
           <span>Create Event</span>
         </Link>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <article
             key={stat.label}
-            className="rounded-[16px] border border-border-subtle bg-panel px-4 py-4 shadow-[0_8px_20px_rgba(23,32,51,0.03)]"
+            className="rounded-[16px] border border-border-subtle bg-panel px-4 py-4 shadow-[var(--shadow-card)]"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
               {stat.label}
@@ -47,7 +47,7 @@ export function PromoterOverview({
                 stat.tone === "warning"
                   ? "text-warning"
                   : stat.tone === "highlight"
-                    ? "text-[#7c3aed]"
+                    ? "text-info"
                     : "text-text-strong"
               }`}
             >
@@ -62,7 +62,7 @@ export function PromoterOverview({
         {events.map((event) => (
           <article
             key={event.slug}
-            className="rounded-[16px] border border-border-subtle bg-panel p-4 shadow-[0_10px_22px_rgba(23,32,51,0.04)]"
+            className="rounded-[16px] border border-border-subtle bg-panel p-4 shadow-[var(--shadow-card-strong)]"
           >
             <div className="space-y-1">
               <h2 className="text-[18px] font-semibold text-text-strong">
@@ -85,7 +85,7 @@ export function PromoterOverview({
 
             <Link
               href={`/dashboard/promoter/events/${event.slug}`}
-              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-[10px] bg-brand text-sm font-semibold text-white transition hover:bg-brand-strong"
+              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-[10px] bg-brand text-sm font-semibold text-text-inverse transition hover:bg-brand-strong"
             >
               Open Event
             </Link>
@@ -94,7 +94,7 @@ export function PromoterOverview({
       </section>
 
       {events.length === 0 ? (
-        <section className="rounded-[16px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[0_8px_20px_rgba(23,32,51,0.03)]">
+        <section className="rounded-[16px] border border-border-subtle bg-panel px-5 py-10 text-center shadow-[var(--shadow-card)]">
           <p className="text-[20px] font-semibold text-text-strong">
             No events created yet
           </p>

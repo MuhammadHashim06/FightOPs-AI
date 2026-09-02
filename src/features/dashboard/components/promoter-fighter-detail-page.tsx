@@ -17,24 +17,24 @@ export function PromoterFighterDetailPage({
         <span>Back to fighters</span>
       </Link>
 
-      <section className="overflow-hidden rounded-[24px] bg-[#162746] text-white shadow-[0_22px_48px_rgba(22,39,70,0.2)]">
+      <section className="overflow-hidden rounded-[24px] bg-surface-dark-alt text-text-inverse shadow-[var(--shadow-dark-hero)]">
         <div className="grid gap-6 px-6 py-7 lg:grid-cols-[1.2fr_0.8fr] lg:px-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#91a5c8]">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-surface-dark-muted-alt">
               Fighter profile
             </p>
             <h1 className="mt-2 text-[34px] font-semibold tracking-tight">
               {data.fighter.name}
             </h1>
-            <p className="mt-2 text-[18px] text-[#c4d2ea]">
+            <p className="mt-2 text-[18px] text-surface-dark-body">
               {data.event.name} - {data.fight.position} - {data.fight.weightClass}
             </p>
           </div>
 
-          <div className="rounded-[18px] border border-white/10 bg-white/8 p-4">
+          <div className="rounded-[18px] border border-text-inverse/10 bg-panel/8 p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#91a5c8]">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-surface-dark-muted-alt">
                   Readiness
                 </p>
                 <p className="mt-1 text-[36px] font-semibold">
@@ -43,13 +43,13 @@ export function PromoterFighterDetailPage({
               </div>
               <StatusPill label={data.readiness.statusLabel} tone={getStatusTone(data.readiness.statusLabel)} />
             </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-panel/15">
               <div
                 className="h-full rounded-full bg-brand"
                 style={{ width: `${data.readiness.percentage}%` }}
               />
             </div>
-            <p className="mt-4 text-[15px] leading-6 text-[#c4d2ea]">
+            <p className="mt-4 text-[15px] leading-6 text-surface-dark-body">
               {data.readiness.nextAction}
             </p>
           </div>
@@ -92,7 +92,7 @@ export function PromoterFighterDetailPage({
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
             Operational areas
           </p>
@@ -115,7 +115,7 @@ export function PromoterFighterDetailPage({
                     tone={group.completed === group.total ? "success" : "warning"}
                   />
                 </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-panel">
                   <div
                     className="h-full rounded-full bg-brand"
                     style={{ width: `${Math.round((group.completed / group.total) * 100)}%` }}
@@ -126,7 +126,7 @@ export function PromoterFighterDetailPage({
           </div>
         </article>
 
-        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <article className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
             Requirements
           </p>
@@ -138,7 +138,7 @@ export function PromoterFighterDetailPage({
             {data.requirements.map((requirement) => (
               <div
                 key={requirement.id}
-                className="grid gap-4 bg-white px-4 py-4 lg:grid-cols-[1fr_0.7fr_0.8fr_auto]"
+                className="grid gap-4 bg-panel px-4 py-4 lg:grid-cols-[1fr_0.7fr_0.8fr_auto]"
               >
                 <div>
                   <p className="text-[16px] font-semibold text-text-strong">
@@ -185,7 +185,7 @@ export function PromoterFighterDetailPage({
         </article>
       </section>
 
-      <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[20px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
@@ -197,7 +197,7 @@ export function PromoterFighterDetailPage({
           </div>
           <Link
             href={`/dashboard/promoter/activity-logs`}
-            className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-4 text-sm font-semibold text-text-strong transition hover:bg-panel-muted"
+            className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-semibold text-text-strong transition hover:bg-panel-muted"
           >
             View audit log
           </Link>
@@ -255,7 +255,7 @@ function MetricCard({
           : "text-text-strong";
 
   return (
-    <div className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <div className="rounded-[18px] border border-border-subtle bg-panel p-5 shadow-[var(--shadow-card)]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
         {label}
       </p>
@@ -272,7 +272,7 @@ function InfoCard({
   rows: Array<[string, string]>;
 }) {
   return (
-    <article className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <article className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
       <div className="border-b border-border-subtle px-5 py-4">
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-text-muted">
           {title}
@@ -304,13 +304,13 @@ function StatusPill({
 }) {
   const className =
     tone === "success"
-      ? "border-[#b7ead1] bg-[#ecfbf2] text-success"
+      ? "border-success-border bg-success-surface text-success"
       : tone === "danger"
-        ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+        ? "border-danger-border bg-danger-surface text-danger"
         : tone === "brand"
-          ? "border-[#c9d9ff] bg-[#edf3ff] text-brand"
+          ? "border-brand-border bg-brand-surface-strong text-brand"
           : tone === "warning"
-            ? "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]"
+            ? "border-warning-border bg-warning-surface text-warning"
             : "border-border-subtle bg-panel-muted text-text-body";
 
   return (

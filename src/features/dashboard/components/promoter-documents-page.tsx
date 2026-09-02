@@ -154,12 +154,12 @@ export function PromoterDocumentsPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="rounded-[18px] border border-border-subtle bg-panel p-4 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <aside className="rounded-[18px] border border-border-subtle bg-panel p-4 shadow-[var(--shadow-card)]">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
             Categories
           </p>
 
-          <div className="mt-4 flex h-10 items-center gap-3 rounded-[10px] border border-border-subtle bg-white px-3 text-text-muted">
+          <div className="mt-4 flex h-10 items-center gap-3 rounded-[10px] border border-border-subtle bg-panel px-3 text-text-muted">
             <SearchIcon className="h-4 w-4" />
             <input
               type="text"
@@ -205,7 +205,7 @@ export function PromoterDocumentsPage({
           </div>
         </aside>
 
-        <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
           <div className="border-b border-border-subtle px-4 pt-4">
             <div className="flex flex-wrap gap-6 px-2">
               {eventFilters.map((filter) => {
@@ -229,7 +229,7 @@ export function PromoterDocumentsPage({
             </div>
 
             <div className="py-4">
-              <div className="flex h-10 max-w-[440px] items-center gap-3 rounded-[10px] border border-border-subtle bg-white px-3 text-text-muted">
+              <div className="flex h-10 max-w-[440px] items-center gap-3 rounded-[10px] border border-border-subtle bg-panel px-3 text-text-muted">
                 <SearchIcon className="h-4 w-4" />
                 <input
                   type="text"
@@ -289,7 +289,7 @@ export function PromoterDocumentsPage({
                       href={file.publicUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-white px-3 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-3 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
                     >
                       Open
                     </a>
@@ -305,7 +305,7 @@ export function PromoterDocumentsPage({
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleDecision(file.id, "accept")}
-                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-success px-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-success px-3 text-sm font-semibold text-text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Accept
                       </button>
@@ -313,7 +313,7 @@ export function PromoterDocumentsPage({
                         type="button"
                         disabled={isBusy}
                         onClick={() => handleDecision(file.id, "reject")}
-                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-danger px-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] bg-danger px-3 text-sm font-semibold text-text-inverse transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         Reject
                       </button>
@@ -356,10 +356,10 @@ function StatusPill({
 }) {
   const styles =
     status === "ACCEPTED"
-      ? "border-[#b7ead1] bg-[#ecfbf2] text-success"
+      ? "border-success-border bg-success-surface text-success"
       : status === "REJECTED"
-        ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
-        : "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]";
+        ? "border-danger-border bg-danger-surface text-danger"
+        : "border-warning-border bg-warning-surface text-warning";
 
   return (
     <span className={`inline-flex rounded-[10px] border px-3 py-1 text-sm font-medium ${styles}`}>
@@ -375,11 +375,11 @@ function PriorityPill({
 }) {
   const styles =
     tone === "critical"
-      ? "border-[#ffc2c2] bg-[#fff0f0] text-danger"
+      ? "border-danger-border bg-danger-surface text-danger"
       : tone === "high"
-        ? "border-[#ffd38f] bg-[#fff6e5] text-[#dc7d09]"
+        ? "border-warning-border bg-warning-surface text-warning"
         : tone === "medium"
-          ? "border-[#c9d9ff] bg-[#edf3ff] text-brand"
+          ? "border-brand-border bg-brand-surface-strong text-brand"
           : "border-border-subtle bg-panel-muted text-text-body";
 
   return (

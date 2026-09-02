@@ -51,7 +51,10 @@ export function Field({
 }: FieldProps) {
   return (
     <label className="flex flex-col gap-2" htmlFor={id}>
-      <span className="text-sm font-semibold text-text-strong">{label}</span>
+      <span className="text-sm font-semibold text-text-strong">
+        {label}
+        {required ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       <input
         id={id}
         name={name ?? id}
@@ -89,7 +92,10 @@ export function PasswordField({
 
   return (
     <label className="flex flex-col gap-2" htmlFor={id}>
-      <span className="text-sm font-semibold text-text-strong">{label}</span>
+      <span className="text-sm font-semibold text-text-strong">
+        {label}
+        {required ? <span className="ml-1 text-danger">*</span> : null}
+      </span>
       <div className="relative">
         <input
           id={id}

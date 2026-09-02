@@ -26,7 +26,7 @@ export function FighterFightDetailsPage({
       <FightGroup title="Completed" fights={completedFights} />
 
       {fights.length === 0 ? (
-        <section className="rounded-[20px] border border-border-subtle bg-panel p-8 text-center shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+        <section className="rounded-[20px] border border-border-subtle bg-panel p-8 text-center shadow-[var(--shadow-card)]">
           <h2 className="text-[22px] font-semibold text-text-strong">
             No fights assigned yet
           </h2>
@@ -59,7 +59,7 @@ function FightGroup({
         {fights.map((fight) => (
           <article
             key={fight.id}
-            className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[0_10px_24px_rgba(23,32,51,0.03)]"
+            className="rounded-[20px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]"
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -108,7 +108,7 @@ function FightMeta({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="pt-0.5 text-[#91a3c2]">
+      <div className="pt-0.5 text-fighter-link-muted">
         <Icon className="h-4 w-4" />
       </div>
       <div>

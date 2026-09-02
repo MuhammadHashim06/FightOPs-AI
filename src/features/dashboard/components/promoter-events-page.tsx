@@ -21,15 +21,15 @@ export function PromoterEventsPage({
 
         <Link
           href="/dashboard/promoter/events/create"
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,107,255,0.24)] transition hover:bg-brand-strong"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-brand px-5 text-sm font-semibold text-text-inverse shadow-[var(--shadow-button)] transition hover:bg-brand-strong"
         >
           <PlusIcon className="h-4 w-4" />
           <span>Create Event</span>
         </Link>
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
-        <div className="flex h-12 items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 text-text-muted">
+      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
+        <div className="flex h-12 items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-text-muted">
           <SearchIcon className="h-5 w-5" />
           <input
             type="text"
@@ -39,7 +39,7 @@ export function PromoterEventsPage({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="hidden grid-cols-[2fr_1.2fr_2.2fr_1fr_1fr_1.3fr_1fr] gap-4 border-b border-border-subtle px-10 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
           <span>Event</span>
           <span>Date</span>
@@ -52,9 +52,10 @@ export function PromoterEventsPage({
 
         <div className="divide-y divide-border-subtle">
           {events.map((event) => (
-            <article
+            <Link
               key={event.slug}
-              className="grid gap-4 px-5 py-5 lg:grid-cols-[2fr_1.2fr_2.2fr_1fr_1fr_1.3fr_1fr] lg:px-10"
+              href={`/dashboard/promoter/events/${event.slug}`}
+              className="group grid gap-4 px-5 py-5 transition hover:bg-panel-muted lg:grid-cols-[2fr_1.2fr_2.2fr_1fr_1fr_1.3fr_1fr] lg:px-10"
             >
               <div>
                 <p className="text-lg font-semibold text-text-strong">{event.name}</p>
@@ -67,14 +68,11 @@ export function PromoterEventsPage({
                 <EventStatusBadge status={event.status} />
               </div>
               <div>
-                <Link
-                  href={`/dashboard/promoter/events/${event.slug}`}
-                  className="text-[15px] font-medium text-brand transition hover:text-brand-strong"
-                >
+                <span className="text-[15px] font-medium text-brand transition group-hover:text-brand-strong">
                   Open
-                </Link>
+                </span>
               </div>
-            </article>
+            </Link>
           ))}
 
           {events.length === 0 ? (
@@ -96,9 +94,9 @@ export function PromoterEventsPage({
 export function EventStatusBadge({ status }: { status: DashboardEventSummary["status"] }) {
   const styles =
     status === "active"
-      ? "border-[#b7ead1] bg-[#ecfbf2] text-success"
+      ? "border-success-border bg-success-surface text-success"
       : status === "upcoming"
-        ? "border-[#c9d9ff] bg-[#edf3ff] text-brand"
+        ? "border-brand-border bg-brand-surface-strong text-brand"
         : "border-border-subtle bg-panel-muted text-text-body";
 
   return (

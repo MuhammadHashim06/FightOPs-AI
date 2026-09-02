@@ -128,15 +128,16 @@ export function EventRemindersPage({
 
       <div className="flex flex-wrap gap-8 border-b border-border-subtle">
         <EventTab href={`/dashboard/promoter/events/${eventSlug}`}>Fight Card</EventTab>
+        <EventTab href={`/dashboard/promoter/events/${eventSlug}/fighters`}>Fighters</EventTab>
+        <EventTab href={`/dashboard/promoter/events/${eventSlug}/readiness`}>
+          Event Readiness
+        </EventTab>
         <EventTab href={`/dashboard/promoter/events/${eventSlug}/requirements`}>
           Required Documents
         </EventTab>
         <EventTab href={`/dashboard/promoter/events/${eventSlug}/post-reminders`} active>
           Post Reminders
         </EventTab>
-        <EventTab>Human Action</EventTab>
-        <EventTab>Event Knowledge</EventTab>
-        <EventTab>Communications</EventTab>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -146,9 +147,9 @@ export function EventRemindersPage({
         <SummaryCard label="Due now" value={summary.overdue} hint="ready to send" tone="warning" />
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-white px-4 text-text-muted">
+          <div className="flex h-12 flex-1 items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-text-muted">
             <SearchIcon className="h-5 w-5" />
             <input
               type="text"
@@ -163,14 +164,14 @@ export function EventRemindersPage({
             type="button"
             onClick={handleSendDueReminders}
             disabled={isSending}
-            className="inline-flex h-12 items-center justify-center rounded-[12px] bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(47,107,255,0.24)] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-12 items-center justify-center rounded-[12px] bg-brand px-5 text-sm font-semibold text-text-inverse shadow-[var(--shadow-button)] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSending ? "Sending..." : "Send Due Reminders"}
           </button>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+      <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="hidden grid-cols-[1.2fr_1.4fr_1fr_1fr_1.6fr_0.9fr] gap-4 border-b border-border-subtle px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
           <span>Recipient</span>
           <span>Requirement</span>
@@ -274,7 +275,7 @@ function SummaryCard({
   tone?: "warning";
 }) {
   return (
-    <section className="rounded-[18px] border border-border-subtle bg-panel px-4 py-5 shadow-[0_10px_24px_rgba(23,32,51,0.03)]">
+    <section className="rounded-[18px] border border-border-subtle bg-panel px-4 py-5 shadow-[var(--shadow-card)]">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
         {label}
       </p>
@@ -289,12 +290,12 @@ function SummaryCard({
 function StatusBadge({ status }: { status: ReminderLogRecord["status"] }) {
   const styles =
     status === "SENT"
-      ? "bg-[#e7f8ee] text-[#15924c]"
+      ? "bg-success-surface-strong text-success"
       : status === "FAILED"
-        ? "bg-[#fff0f0] text-danger"
+        ? "bg-danger-surface text-danger"
         : status === "SKIPPED"
           ? "bg-panel-muted text-text-body"
-          : "bg-[#edf3ff] text-brand";
+          : "bg-brand-surface-strong text-brand";
 
   return (
     <span className={`inline-flex rounded-[8px] px-2.5 py-1 text-sm font-medium ${styles}`}>
