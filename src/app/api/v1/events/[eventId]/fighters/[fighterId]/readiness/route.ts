@@ -1,7 +1,8 @@
-import { notFound, ok, unauthorized } from "@/lib/api/response";
-import { getEventById } from "@/server/services/events.service";
+import { forbidden, notFound, ok, unauthorized } from "@/lib/api/response";
+import { getEventByIdForUser } from "@/server/services/events.service";
 import { getFighterReadinessDetail } from "@/server/services/readiness.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 
 export async function GET(
   _request: Request,
@@ -13,8 +14,12 @@ export async function GET(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId, fighterId } = await context.params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdForUser(eventId, user);
 
   if (!event) {
     return notFound(`Event '${eventId}' was not found.`);

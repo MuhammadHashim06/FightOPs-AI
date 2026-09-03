@@ -77,7 +77,13 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
         ];
   const settingsNavItems =
     user.role === "fighter"
-      ? []
+      ? [
+          {
+            href: `${basePath}/settings`,
+            label: "Settings",
+            icon: SettingsIcon,
+          },
+        ]
       : [
           {
             href: `${basePath}/settings`,

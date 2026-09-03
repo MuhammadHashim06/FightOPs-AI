@@ -5,6 +5,7 @@ import Link from "next/link";
 import { startTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { EventTabs } from "@/features/dashboard/components/event-tabs";
 import { useToast } from "@/providers/toast-provider";
 import type { ReminderLogRecord } from "@/types/readiness";
 
@@ -119,30 +120,18 @@ export function EventRemindersPage({
 
       <div className="space-y-1">
         <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
-          Post Reminders
+          Reminder Activity
         </h1>
         <p className="text-lg text-text-body">
-          Review and send document reminder emails for {eventName}.
+          Review scheduled follow-ups and email delivery history for {eventName}.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-8 border-b border-border-subtle">
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}`}>Fight Card</EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/fighters`}>Fighters</EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/readiness`}>
-          Event Readiness
-        </EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/requirements`}>
-          Required Documents
-        </EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/post-reminders`} active>
-          Post Reminders
-        </EventTab>
-      </div>
+      <EventTabs eventSlug={eventSlug} activeTab="Post Reminders" />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Total" value={summary.total} hint="queued reminders" />
-        <SummaryCard label="Pending" value={summary.pending} hint="not sent yet" />
+        <SummaryCard label="Attempts" value={summary.total} hint="recorded email deliveries" />
+        <SummaryCard label="Scheduled" value={summary.pending} hint="requirements with a next follow-up" />
         <SummaryCard label="Sent" value={summary.sent} hint="email actions completed" />
         <SummaryCard label="Due now" value={summary.overdue} hint="ready to send" tone="warning" />
       </div>
@@ -175,7 +164,7 @@ export function EventRemindersPage({
         <div className="hidden grid-cols-[1.2fr_1.4fr_1fr_1fr_1.6fr_0.9fr] gap-4 border-b border-border-subtle px-6 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
           <span>Recipient</span>
           <span>Requirement</span>
-          <span>Scheduled</span>
+          <span>Attempted</span>
           <span>Due Date</span>
           <span>Subject</span>
           <span>Status</span>
@@ -220,46 +209,16 @@ export function EventRemindersPage({
           {filteredReminders.length === 0 ? (
             <div className="px-5 py-12 text-center lg:px-10">
               <p className="text-[18px] font-medium text-text-strong">
-                No reminders found
+                No reminder deliveries yet
               </p>
               <p className="mt-2 text-[15px] text-text-body">
-                Add fighters and requirements to start building the email reminder queue.
+                Delivery history will appear after a reminder email is attempted.
               </p>
             </div>
           ) : null}
         </div>
       </section>
     </main>
-  );
-}
-
-function EventTab({
-  children,
-  href,
-  active = false,
-}: {
-  children: string;
-  href?: string;
-  active?: boolean;
-}) {
-  const className = `border-b-2 px-3 pb-3 text-[15px] font-medium transition ${
-    active
-      ? "border-brand text-brand"
-      : "border-transparent text-text-body hover:text-text-strong"
-  }`;
-
-  if (href) {
-    return (
-      <Link href={href} className={className}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" className={className}>
-      {children}
-    </button>
   );
 }
 

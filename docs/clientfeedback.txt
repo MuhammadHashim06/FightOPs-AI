@@ -1,5 +1,5 @@
 auth screen
-Auth screens must be much simple and also have less text only necessary tex should be shown 
+Auth screens must be much simple and also have less text only necessary text should be shown 
 duplicate login naviagation button in verfiction email
 
 Event screens

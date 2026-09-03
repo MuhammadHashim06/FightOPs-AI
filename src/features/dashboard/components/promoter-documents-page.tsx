@@ -10,18 +10,20 @@ import type { ApiResponse } from "@/types/api";
 type PromoterDocumentsPageProps = {
   reviewQueue: DocumentReviewQueueItem[];
   scopeLabel?: string;
+  initialEventId?: string;
 };
 
 export function PromoterDocumentsPage({
   reviewQueue,
   scopeLabel = "Events",
+  initialEventId,
 }: PromoterDocumentsPageProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [categorySearch, setCategorySearch] = useState("");
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All Files");
-  const [activeEvent, setActiveEvent] = useState("all-events");
+  const [activeEvent, setActiveEvent] = useState(initialEventId ?? "all-events");
   const [busySubmissionId, setBusySubmissionId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -284,20 +286,14 @@ export function PromoterDocumentsPage({
                   <StatusPill status={file.status} label={file.statusLabel} />
                   <PriorityPill tone={file.priority} />
 
-                  {file.publicUrl ? (
-                    <a
-                      href={file.publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-3 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-                    >
-                      Open
-                    </a>
-                  ) : (
-                    <span className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel-muted px-3 text-sm font-medium text-text-muted">
-                      Stored
-                    </span>
-                  )}
+                  <a
+                    href={`/api/v1/document-submissions/${file.id}/file`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-3 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                  >
+                    Open
+                  </a>
 
                   {file.status === "PENDING_REVIEW" ? (
                     <>

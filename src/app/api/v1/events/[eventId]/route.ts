@@ -1,10 +1,11 @@
-import { badRequest, notFound, ok, unauthorized } from "@/lib/api/response";
+import { badRequest, forbidden, notFound, ok, unauthorized } from "@/lib/api/response";
 import {
-  deleteEvent,
-  getEventById,
-  updateEvent,
+  deleteEventForUser,
+  getEventByIdForUser,
+  updateEventForUser,
 } from "@/server/services/events.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 import type { UpdateEventInput } from "@/types/event";
 
 export async function GET(
@@ -17,8 +18,12 @@ export async function GET(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId } = await context.params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdForUser(eventId, user);
 
   if (!event) {
     return notFound(`Event '${eventId}' was not found.`);
@@ -37,10 +42,14 @@ export async function PATCH(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   try {
     const body = (await request.json()) as UpdateEventInput;
     const { eventId } = await context.params;
-    const event = await updateEvent(eventId, body);
+    const event = await updateEventForUser(eventId, body, user);
 
     if (!event) {
       return notFound(`Event '${eventId}' was not found.`);
@@ -64,8 +73,12 @@ export async function DELETE(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId } = await context.params;
-  const deleted = await deleteEvent(eventId);
+  const deleted = await deleteEventForUser(eventId, user);
 
   if (!deleted) {
     return notFound(`Event '${eventId}' was not found.`);

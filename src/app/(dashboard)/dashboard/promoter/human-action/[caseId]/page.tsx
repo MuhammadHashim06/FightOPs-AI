@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { HumanActionCasePage } from "@/features/dashboard/components/human-action-case-page";
-import { getHumanActionCaseById } from "@/features/dashboard/data/promoter-events";
+import { getHumanActionCaseByIdForUser } from "@/server/services/human-action.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
 type HumanActionCaseRouteProps = {
   params: Promise<{
@@ -13,7 +14,8 @@ export default async function HumanActionCaseRoute({
   params,
 }: HumanActionCaseRouteProps) {
   const { caseId } = await params;
-  const item = getHumanActionCaseById(caseId);
+  const user = await getAuthenticatedUser();
+  const item = user ? await getHumanActionCaseByIdForUser(caseId, user) : null;
 
   if (!item) {
     notFound();

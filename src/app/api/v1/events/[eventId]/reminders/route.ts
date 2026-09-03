@@ -1,10 +1,11 @@
-import { badRequest, ok, unauthorized } from "@/lib/api/response";
-import { getEventById } from "@/server/services/events.service";
+import { badRequest, forbidden, ok, unauthorized } from "@/lib/api/response";
+import { getEventByIdForUser } from "@/server/services/events.service";
 import {
   listEventReminders,
   sendDueReminders,
 } from "@/server/services/reminders.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 
 export async function GET(
   _request: Request,
@@ -16,8 +17,12 @@ export async function GET(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId } = await context.params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdForUser(eventId, user);
 
   if (!event) {
     return badRequest("Event was not found.");
@@ -37,8 +42,12 @@ export async function POST(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId } = await context.params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdForUser(eventId, user);
 
   if (!event) {
     return badRequest("Event was not found.");

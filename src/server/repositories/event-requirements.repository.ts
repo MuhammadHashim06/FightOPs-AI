@@ -6,6 +6,20 @@ import { connectToDatabase } from "@/server/db/mongoose";
 import { EventRequirementMongoModel } from "@/server/models/event-requirement.model";
 
 export const eventRequirementsRepository = {
+  async listByIds(eventRequirementIds: string[]) {
+    await connectToDatabase();
+
+    if (eventRequirementIds.length === 0) {
+      return [];
+    }
+
+    const requirements = await EventRequirementMongoModel.find({
+      _id: { $in: eventRequirementIds },
+      isActive: true,
+    }).lean();
+
+    return requirements.map(mapEventRequirement);
+  },
   async listByEventId(eventId: string) {
     await connectToDatabase();
 
@@ -51,6 +65,50 @@ export const eventRequirementsRepository = {
 
     return mapEventRequirement(requirement.toObject());
   },
+  async update(eventId: string, requirementId: string, input: CreateEventRequirementInput) {
+    await connectToDatabase();
+
+    const requirement = await EventRequirementMongoModel.findOneAndUpdate(
+      { _id: requirementId, eventId, isActive: true },
+      {
+        $set: {
+          category: input.category,
+          name: input.name,
+          description: normalizeOptionalText(input.description),
+          inputType: input.inputType,
+          required: input.required,
+          priority: input.priority,
+          dueDate: input.dueDate ?? null,
+          dueAnchor: input.dueAnchor ?? "before_event",
+          dueOffsetDays: typeof input.dueOffsetDays === "number" ? input.dueOffsetDays : null,
+          reminderEnabled: input.reminderEnabled ?? false,
+          reminderCadence: input.reminderCadence ?? "daily_until_resolved",
+          reminderDaysBeforeDue: input.reminderDaysBeforeDue ?? [],
+          reminderSubject: normalizeOptionalText(input.reminderSubject),
+          reminderMessage: normalizeOptionalText(input.reminderMessage),
+          structuredFields: (input.structuredFields ?? []).map(mapStructuredFieldInput),
+          documentBlocks: normalizeDocumentBlocks(input),
+          humanVerificationRequired: input.humanVerificationRequired ?? false,
+          isSignedAgreement: input.isSignedAgreement ?? false,
+          acceptedFileTypes: input.acceptedFileTypes ?? [],
+        },
+      },
+      { returnDocument: "after" },
+    ).lean();
+
+    return requirement ? mapEventRequirement(requirement) : null;
+  },
+  async deactivate(eventId: string, requirementId: string) {
+    await connectToDatabase();
+
+    const requirement = await EventRequirementMongoModel.findOneAndUpdate(
+      { _id: requirementId, eventId, isActive: true },
+      { $set: { isActive: false } },
+      { returnDocument: "after" },
+    ).lean();
+
+    return requirement ? mapEventRequirement(requirement) : null;
+  },
   async getNextSortOrder(eventId: string) {
     await connectToDatabase();
 
@@ -63,6 +121,12 @@ export const eventRequirementsRepository = {
       .lean();
 
     return (latestRequirement?.sortOrder ?? 0) + 1;
+  },
+  async deleteByEventId(eventId: string) {
+    await connectToDatabase();
+
+    const result = await EventRequirementMongoModel.deleteMany({ eventId });
+    return result.deletedCount ?? 0;
   },
 };
 

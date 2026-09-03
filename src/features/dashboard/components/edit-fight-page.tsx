@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { DeleteFightButton } from "@/features/dashboard/components/delete-fight-button";
 import type { PromoterFightDetailData } from "@/server/services/events.service";
 import { useToast } from "@/providers/toast-provider";
+import type { FightCardGroup, FightCardOptionRecord } from "@/types/event";
 
 type FightSide = "fighterA" | "fighterB";
 
@@ -24,32 +25,28 @@ type RemoveModalState = {
   fighterName: string;
 } | null;
 
-const weightClassOptions = [
-  "Strawweight",
-  "Flyweight",
-  "Bantamweight",
-  "Featherweight",
-  "Lightweight",
-  "Welterweight",
-  "Middleweight",
-  "Light Heavyweight",
-  "Heavyweight",
-  "Catchweight",
-];
-
 export function EditFightPage({
   fight,
+  cardGroupOptions,
+  weightClassOptions,
 }: {
   fight: PromoterFightDetailData;
+  cardGroupOptions: FightCardOptionRecord[];
+  weightClassOptions: FightCardOptionRecord[];
 }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [editingSide, setEditingSide] = useState<FightSide | null>(null);
-  const [division, setDivision] = useState(() =>
-    weightClassOptions.includes(fight.bout.division)
-      ? fight.bout.division
-      : "Lightweight",
+  const [division, setDivision] = useState(() => {
+    const matchingOption = weightClassOptions.find(
+      (option) => option.key === fight.bout.division,
+    );
+    return matchingOption?.key ?? fight.bout.division;
+  });
+  const [catchweightKg, setCatchweightKg] = useState(
+    fight.bout.catchweightKg?.toString() ?? "",
   );
+  const [cardGroup, setCardGroup] = useState<FightCardGroup>(fight.bout.cardGroup);
   const [fighterA, setFighterA] = useState(() => mapInitialFighterState(fight, 0));
   const [fighterB, setFighterB] = useState(() => mapInitialFighterState(fight, 1));
   const [isSavingDivision, setIsSavingDivision] = useState(false);
@@ -68,7 +65,9 @@ export function EditFightPage({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          cardGroup,
           division,
+          catchweightKg: catchweightKg ? Number(catchweightKg) : null,
           fighterA: buildPayload(fighterA, division),
           fighterB: buildPayload(fighterB, division),
         }),
@@ -80,7 +79,7 @@ export function EditFightPage({
       }
 
       showToast({
-        title: "Fight division updated.",
+        title: "Fight settings updated.",
         variant: "success",
       });
 
@@ -258,6 +257,22 @@ export function EditFightPage({
         <div className="flex flex-col gap-3 rounded-[16px] border border-border-subtle bg-panel px-4 py-3 sm:min-w-[280px]">
           <label className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Card group <span className="text-danger">*</span>
+            </span>
+            <select
+              value={cardGroup}
+              onChange={(event) => setCardGroup(event.target.value)}
+              className={`${inputClassName} appearance-none`}
+            >
+              {cardGroupOptions.map((group) => (
+                <option key={group.key} value={group.key}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
               Weight class <span className="text-danger">*</span>
             </span>
             <select
@@ -266,19 +281,37 @@ export function EditFightPage({
               className={`${inputClassName} appearance-none`}
             >
               {weightClassOptions.map((weightClass) => (
-                <option key={weightClass} value={weightClass}>
-                  {weightClass}
+                <option key={weightClass.key} value={weightClass.key}>
+                  {formatWeightClassOption(weightClass)}
                 </option>
               ))}
             </select>
           </label>
+          {weightClassOptions.find((option) => option.key === division)
+            ?.allowsCustomWeight ? (
+            <label className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                Catchweight (kg) <span className="text-danger">*</span>
+              </span>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={catchweightKg}
+                onChange={(event) => setCatchweightKg(event.target.value)}
+                placeholder="e.g. 72.0"
+                className={inputClassName}
+                required
+              />
+            </label>
+          ) : null}
           <button
             type="button"
             onClick={handleDivisionSave}
             disabled={isSavingDivision}
             className="inline-flex h-10 items-center justify-center rounded-[12px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSavingDivision ? "Saving..." : "Save division"}
+            {isSavingDivision ? "Saving..." : "Save fight settings"}
           </button>
         </div>
       </div>
@@ -699,6 +732,18 @@ function canSaveFighter(input: FighterFormState, isEmptySlot: boolean) {
   }
 
   return true;
+}
+
+function formatWeightClassOption(option: FightCardOptionRecord) {
+  if (option.allowsCustomWeight) {
+    return `${option.label} - custom limit`;
+  }
+
+  if (option.weightLimitKg !== null && option.weightLimitLb !== null) {
+    return `${option.label} -${option.weightLimitKg} kg (${option.weightLimitLb} lb)`;
+  }
+
+  return option.label;
 }
 
 const inputClassName =

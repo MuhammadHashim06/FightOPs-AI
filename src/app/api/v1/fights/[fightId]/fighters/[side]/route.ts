@@ -1,11 +1,14 @@
 import {
   badRequest,
+  forbidden,
   notFound,
   ok,
   unauthorized,
 } from "@/lib/api/response";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 import {
+  findFightByIdForUser,
   removeFightSideById,
   saveFightSideById,
 } from "@/server/services/fights.service";
@@ -39,6 +42,10 @@ export async function DELETE(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   try {
     const { fightId, side } = await context.params;
 
@@ -46,8 +53,14 @@ export async function DELETE(
       return badRequest("Invalid fight side.");
     }
 
-    const fight = await removeFightSideById({ fightId, side });
-    return ok({ fight });
+    const fight = await findFightByIdForUser(fightId, user);
+
+    if (!fight) {
+      return notFound("Fight was not found.");
+    }
+
+    const updatedFight = await removeFightSideById({ fightId, side });
+    return ok({ fight: updatedFight });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to remove fighter.";
 
@@ -69,11 +82,21 @@ async function saveFightSide(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   try {
     const { fightId, side } = await context.params;
 
     if (!isFightSide(side)) {
       return badRequest("Invalid fight side.");
+    }
+
+    const fight = await findFightByIdForUser(fightId, user);
+
+    if (!fight) {
+      return notFound("Fight was not found.");
     }
 
     const body = (await request.json()) as CreateFighterInput;

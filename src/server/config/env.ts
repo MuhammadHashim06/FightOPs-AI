@@ -24,6 +24,10 @@ export const env = {
   smtpUser: process.env.SMTP_USER ?? "",
   smtpPass: process.env.SMTP_PASS ?? "",
   emailFrom: process.env.EMAIL_FROM ?? "no-reply@fightops.ai",
+  // Vercel uses CRON_SECRET for its automatic Authorization header. Keep the
+  // project-specific name as a local/external-cron fallback.
+  reminderCronSecret:
+    process.env.CRON_SECRET ?? process.env.REMINDER_CRON_SECRET ?? "",
   storageProvider: process.env.STORAGE_PROVIDER ?? "local",
   localUploadDir: process.env.LOCAL_UPLOAD_DIR ?? "storage/uploads",
   r2AccountId: process.env.R2_ACCOUNT_ID ?? "",

@@ -1,11 +1,10 @@
-import { RoleSectionPlaceholder } from "@/features/dashboard/components/role-section-placeholder";
+import { PromoterActivityPage } from "@/features/dashboard/components/promoter-activity-page";
+import { listActivityLogEntries } from "@/server/services/activity.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default function AdminActivityLogsPage() {
-  return (
-    <RoleSectionPlaceholder
-      eyebrow="Admin"
-      title="Activity logs"
-      description="Inspect audit trails, recent updates, and system-level operations performed across the platform."
-    />
-  );
+export default async function AdminActivityLogsPage() {
+  const user = await getAuthenticatedUser();
+  const entries = user ? await listActivityLogEntries(user) : [];
+
+  return <PromoterActivityPage entries={entries} />;
 }

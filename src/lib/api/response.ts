@@ -18,6 +18,10 @@ export function unauthorized(message = "Unauthorized", details?: unknown) {
   return error("UNAUTHORIZED", message, 401, details);
 }
 
+export function forbidden(message = "You do not have access to this resource.", details?: unknown) {
+  return error("FORBIDDEN", message, 403, details);
+}
+
 export function conflict(message = "Conflict", details?: unknown) {
   return error("CONFLICT", message, 409, details);
 }

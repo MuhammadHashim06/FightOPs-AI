@@ -1,4 +1,4 @@
-import type { HumanActionPriority } from "@/features/dashboard/data/promoter-events";
+import type { HumanActionPriority } from "@/types/human-action";
 
 export function HumanActionPriorityBadge({
   priority,

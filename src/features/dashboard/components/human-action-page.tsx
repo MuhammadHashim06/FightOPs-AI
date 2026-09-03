@@ -4,19 +4,23 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { HumanActionPriorityBadge } from "@/features/dashboard/components/human-action-priority-badge";
-import {
-  humanActionCases,
-} from "@/features/dashboard/data/promoter-events";
+import type { HumanActionCaseSummary } from "@/types/human-action";
 
 const filters = ["All", "Critical", "High", "Medium", "Low", "Resolved"];
 
-export function HumanActionPage() {
+export function HumanActionPage({
+  cases,
+  basePath = "/dashboard/promoter/human-action",
+}: {
+  cases: HumanActionCaseSummary[];
+  basePath?: string;
+}) {
   const [searchValue, setSearchValue] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const cases = humanActionCases ?? [];
+  const visibleCases = cases ?? [];
 
   const normalizedSearch = searchValue.trim().toLowerCase();
-  const filteredCases = cases.filter((item) => {
+  const filteredCases = visibleCases.filter((item) => {
     const matchesSearch =
       !normalizedSearch ||
       item.fighterName.toLowerCase().includes(normalizedSearch) ||
@@ -91,7 +95,7 @@ export function HumanActionPage() {
           {filteredCases.map((item) => (
             <Link
               key={item.id}
-              href={`/dashboard/promoter/human-action/${item.id}`}
+              href={`${basePath}/${item.id}`}
               className="grid gap-4 px-5 py-5 transition hover:bg-panel-muted lg:grid-cols-[1.2fr_1.5fr_1.3fr_1.5fr_1.4fr_1.2fr] lg:px-10"
             >
               <div>

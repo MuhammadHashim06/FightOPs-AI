@@ -13,10 +13,21 @@ const fightSchema = new Schema(
       required: true,
       min: 1,
     },
+    cardGroup: {
+      type: String,
+      default: "main_card",
+      required: true,
+      index: true,
+    },
     division: {
       type: String,
       required: true,
       trim: true,
+    },
+    catchweightKg: {
+      type: Number,
+      default: null,
+      min: 0,
     },
     fighterAId: {
       type: Schema.Types.ObjectId,

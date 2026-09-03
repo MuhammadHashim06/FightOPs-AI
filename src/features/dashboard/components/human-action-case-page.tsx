@@ -4,37 +4,65 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { HumanActionPriorityBadge } from "@/features/dashboard/components/human-action-priority-badge";
-import type { HumanActionCaseDetail } from "@/features/dashboard/data/promoter-events";
+import type { ApiResponse } from "@/types/api";
+import type {
+  HumanActionCaseDetail,
+  HumanActionDecision,
+} from "@/types/human-action";
 import { useToast } from "@/providers/toast-provider";
 
 export function HumanActionCasePage({
   item,
+  basePath = "/dashboard/promoter/human-action",
 }: {
   item: HumanActionCaseDetail;
+  basePath?: string;
 }) {
   const { showToast } = useToast();
-  const [isResolved, setIsResolved] = useState(false);
+  const [isResolved, setIsResolved] = useState(item.status === "resolved");
+  const [isBusy, setIsBusy] = useState(false);
   const [correctValue, setCorrectValue] = useState("");
 
-  function handleResolve(message: string) {
-    setIsResolved(true);
-    showToast({
-      title: message,
-      variant: "success",
-    });
-  }
+  async function handleDecision(
+    decision: HumanActionDecision,
+    options?: { correctValue?: string | null; note?: string | null },
+  ) {
+    setIsBusy(true);
 
-  function handleAction(message: string) {
-    showToast({
-      title: message,
-      variant: "success",
-    });
+    try {
+      const response = await fetch(`/api/v1/human-action/${item.id}/decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, ...options }),
+      });
+      const result = (await response.json()) as ApiResponse<{
+        case: { status: string };
+      }>;
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.success ? "Unable to process the case." : result.error.message);
+      }
+
+      const resolved = result.data.case.status !== "HUMAN_ACTION";
+      setIsResolved(resolved);
+      showToast({
+        title: resolved ? "Case resolved and audit log updated." : "Action recorded for follow-up.",
+        variant: "success",
+      });
+    } catch (error) {
+      showToast({
+        title: error instanceof Error ? error.message : "Unable to process the case.",
+        variant: "error",
+      });
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   return (
     <main className="space-y-5">
       <Link
-        href="/dashboard/promoter/human-action"
+        href={basePath}
         className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
       >
         <ArrowLeftIcon className="h-4 w-4" />
@@ -82,12 +110,16 @@ export function HumanActionCasePage({
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-              >
-                Open
-              </button>
+              {item.documentSubmissionId ? (
+                <a
+                  href={`/api/v1/document-submissions/${item.documentSubmissionId}/file`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                >
+                  Open
+                </a>
+              ) : null}
             </div>
           </DetailCard>
 
@@ -118,7 +150,9 @@ export function HumanActionCasePage({
           </div>
 
           <p className="mt-4 text-[15px] leading-7 text-text-body">
-            This is a critical priority, identity-sensitive case. Human authority is required.
+            {item.documentSubmissionId
+              ? `${item.priority[0].toUpperCase()}${item.priority.slice(1)} priority case. Review the submitted information before continuing.`
+              : "No document is attached yet. Request a new file before approving this case."}
           </p>
 
           {isResolved ? (
@@ -131,7 +165,7 @@ export function HumanActionCasePage({
                 Fighter status updated. Audit logged.
               </p>
               <Link
-                href="/dashboard/promoter/human-action"
+                href={basePath}
                 className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
               >
                 Back to queue
@@ -139,16 +173,19 @@ export function HumanActionCasePage({
             </div>
           ) : (
             <div className="mt-5 space-y-3">
-              <button
-                type="button"
-                onClick={() => handleResolve("Extracted value approved and case resolved.")}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-success px-4 text-[15px] font-medium text-text-inverse transition hover:opacity-90"
-              >
-                <CheckIcon className="h-4 w-4" />
-                <span>Approve extracted value</span>
-              </button>
+              {item.documentSubmissionId ? (
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => void handleDecision("approve_extracted")}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-success px-4 text-[15px] font-medium text-text-inverse transition hover:opacity-90"
+                >
+                  <CheckIcon className="h-4 w-4" />
+                  <span>Approve extracted value</span>
+                </button>
+              ) : null}
 
-              <div className="rounded-[14px] border border-border-subtle bg-panel p-3">
+              {item.documentSubmissionId ? <div className="rounded-[14px] border border-border-subtle bg-panel p-3">
                 <label className="flex flex-col gap-2">
                   <span className="text-[15px] font-medium text-text-strong">
                     Correct value
@@ -162,55 +199,56 @@ export function HumanActionCasePage({
                 </label>
                 <button
                   type="button"
+                  disabled={isBusy || !correctValue.trim()}
                   onClick={() =>
-                    handleResolve(
-                      correctValue
-                        ? `Correct value "${correctValue}" accepted and case resolved.`
-                        : "Correct value accepted and case resolved.",
-                    )
+                    void handleDecision("correct_and_accept", {
+                      correctValue,
+                    })
                   }
                   className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
                 >
                   <ShieldIcon className="h-4 w-4 text-text-body" />
                   <span>Correct & accept</span>
                 </button>
-              </div>
+              </div> : null}
 
-              <ActionButton
-                label="Request resubmission"
-                icon={<RefreshIcon className="h-4 w-4" />}
-                onClick={() => handleAction("Resubmission request sent.")}
-              />
-              <ActionButton
-                label="Request new file"
-                icon={<DocumentIcon className="h-4 w-4" />}
-                onClick={() => handleAction("New file request sent.")}
-              />
+              {item.documentSubmissionId ? (
+                <ActionButton
+                  label="Request resubmission"
+                  icon={<RefreshIcon className="h-4 w-4" />}
+                  disabled={isBusy}
+                  onClick={() => void handleDecision("request_resubmission")}
+                />
+              ) : null}
+              {!item.documentSubmissionId ? (
+                <ActionButton
+                  label="Request new file"
+                  icon={<DocumentIcon className="h-4 w-4" />}
+                  disabled={isBusy}
+                  onClick={() => void handleDecision("request_new_file")}
+                />
+              ) : null}
               <ActionButton
                 label="Mark N/A"
                 icon={<SlashIcon className="h-4 w-4" />}
-                onClick={() => handleAction("Case marked as not applicable.")}
+                disabled={isBusy}
+                onClick={() => void handleDecision("mark_not_applicable")}
               />
               <ActionButton
                 label="Contact participant"
                 icon={<MessageIcon className="h-4 w-4" />}
-                onClick={() => handleAction("Participant contact action prepared.")}
+                disabled={isBusy}
+                onClick={() => void handleDecision("contact_participant")}
               />
 
               <button
                 type="button"
-                onClick={() => handleAction("Case rejected and routed for follow-up.")}
+                disabled={isBusy}
+                onClick={() => void handleDecision("reject")}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-danger-action px-4 text-[15px] font-medium text-text-inverse transition hover:opacity-90"
               >
                 <CloseIcon className="h-4 w-4" />
                 <span>Reject</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleResolve("Case resolved and audit log updated.")}
-                className="inline-flex h-11 w-full items-center justify-center rounded-[12px] bg-brand px-4 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
-              >
-                Resolve case
               </button>
             </div>
           )}
@@ -307,16 +345,19 @@ function ActionButton({
   label,
   icon,
   onClick,
+  disabled = false,
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+      disabled={disabled}
+      className="inline-flex h-11 w-full items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="text-text-body">{icon}</span>
       <span>{label}</span>

@@ -17,8 +17,6 @@ import type {
   ReadinessStatus,
 } from "@/types/readiness";
 
-const CURRENT_LOCAL_DATE = "2026-08-31T00:00:00.000Z";
-
 export type FighterDashboardData = {
   fighterName: string;
   documentSummary: string;
@@ -125,6 +123,55 @@ export type FighterFightDetailData = {
     statusLabel: string;
     scheduledForLabel: string;
     sentAtLabel: string;
+  }>;
+};
+
+export type FighterDocumentsPageData = {
+  fighterName: string;
+  requirements: Array<{
+    id: string;
+    eventId: string;
+    eventName: string;
+    fightId: string | null;
+    title: string;
+    category: string;
+    status: FighterRequirementStatus;
+    statusLabel: string;
+    dueLabel: string;
+    acceptedFileTypes: string[];
+    submissionId: string | null;
+    fileName: string | null;
+    publicUrl: string | null;
+    reviewNote: string | null;
+  }>;
+};
+
+export type FighterNotificationsPageData = {
+  fighterName: string;
+  notifications: Array<{
+    id: string;
+    eventName: string;
+    requirementName: string;
+    status: "PENDING" | "SENT" | "SKIPPED" | "FAILED";
+    statusLabel: string;
+    scheduledForLabel: string;
+    sentAtLabel: string;
+    dueDateLabel: string;
+    message: string;
+  }>;
+};
+
+export type FighterHumanActionPageData = {
+  fighterName: string;
+  cases: Array<{
+    id: string;
+    eventName: string;
+    fightId: string;
+    requirementName: string;
+    status: "HUMAN_ACTION" | "NEEDS_RESUBMISSION";
+    statusLabel: string;
+    reason: string;
+    dueLabel: string;
   }>;
 };
 
@@ -278,7 +325,6 @@ export async function getFighterFightDetailForUser(
     return null;
   }
 
-  await listEventReminders(event.id);
   const [reminderHistory, documentSubmissions] = await Promise.all([
     reminderLogsRepository.listByEventAndFighter(event.id, fighter.id),
     documentSubmissionsRepository.listByEventAndFighter(event.id, fighter.id),
@@ -357,6 +403,209 @@ export async function getFighterFightDetailForUser(
       scheduledForLabel: formatDateTimeLabel(item.scheduledFor),
       sentAtLabel: item.sentAt ? formatDateTimeLabel(item.sentAt) : "Not sent yet",
     })),
+  };
+}
+
+export async function getFighterDocumentsForUser(
+  user: Pick<AuthUser, "id" | "email" | "profile">,
+): Promise<FighterDocumentsPageData | null> {
+  const fighters = await fightersRepository.listFightersByAccount({
+    userId: user.id,
+    email: user.email,
+  });
+
+  if (fighters.length === 0) {
+    return null;
+  }
+
+  const fights = await listUniqueFightsForFighters(fighters);
+  const requirementEntries = await Promise.all(
+    fights.map(async (fight) => {
+      const fighter = findAssignedFighter(fighters, fight);
+
+      if (!fighter) {
+        return [];
+      }
+
+      const [event, eventRequirements, fighterRequirements, submissions] = await Promise.all([
+        eventsRepository.findEventById(fight.eventId),
+        eventRequirementsRepository.listByEventId(fight.eventId),
+        fighterRequirementsRepository.listByEventAndFighter(fight.eventId, fighter.id),
+        documentSubmissionsRepository.listByEventAndFighter(fight.eventId, fighter.id),
+      ]);
+
+      if (!event) {
+        return [];
+      }
+
+      const eventRequirementMap = new Map(
+        eventRequirements.map((requirement) => [requirement.id, requirement]),
+      );
+      const latestSubmissionMap = new Map<string, (typeof submissions)[number]>();
+
+      for (const submission of submissions) {
+        if (!latestSubmissionMap.has(submission.fighterRequirementId)) {
+          latestSubmissionMap.set(submission.fighterRequirementId, submission);
+        }
+      }
+
+      return fighterRequirements.flatMap((requirement) => {
+        const eventRequirement = eventRequirementMap.get(requirement.eventRequirementId);
+
+        if (!eventRequirement || eventRequirement.inputType !== "document") {
+          return [];
+        }
+
+        const submission = latestSubmissionMap.get(requirement.id);
+
+        return [{
+          id: requirement.id,
+          eventId: event.id,
+          eventName: event.name,
+          fightId: requirement.fightId,
+          title: eventRequirement.name,
+          category: eventRequirement.category,
+          status: requirement.status,
+          statusLabel: mapRequirementStatusLabel(requirement.status),
+          dueLabel: requirement.dueDate
+            ? `Due ${formatDisplayDate(requirement.dueDate)}`
+            : "No due date",
+          acceptedFileTypes: eventRequirement.acceptedFileTypes,
+          submissionId: submission?.id ?? null,
+          fileName: submission?.originalFileName ?? null,
+          publicUrl: submission?.publicUrl ?? null,
+          reviewNote: submission?.reviewNote ?? null,
+        }];
+      });
+    }),
+  );
+
+  const uniqueRequirements = Array.from(
+    new Map(requirementEntries.flat().map((item) => [item.id, item])).values(),
+  );
+  const primaryFighter = pickPrimaryFighter(fighters, user.profile.displayName);
+
+  return {
+    fighterName: primaryFighter?.fullName ?? user.profile.displayName ?? "Fighter",
+    requirements: uniqueRequirements,
+  };
+}
+
+export async function getFighterNotificationsForUser(
+  user: Pick<AuthUser, "id" | "email" | "profile">,
+): Promise<FighterNotificationsPageData | null> {
+  const fighters = await fightersRepository.listFightersByAccount({
+    userId: user.id,
+    email: user.email,
+  });
+
+  if (fighters.length === 0) {
+    return null;
+  }
+
+  const fights = await listUniqueFightsForFighters(fighters);
+  const eventIds = Array.from(new Set(fights.map((fight) => fight.eventId)));
+  const eventNotifications = await Promise.all(
+    eventIds.map(async (eventId) => {
+      const [event, reminders] = await Promise.all([
+        eventsRepository.findEventById(eventId),
+        listEventReminders(eventId),
+      ]);
+
+      if (!event) {
+        return [];
+      }
+
+      return reminders.reminders
+        .filter((reminder) => fighters.some((fighter) => fighter.id === reminder.fighterId))
+        .map((reminder) => ({
+          id: reminder.id,
+          eventName: event.name,
+          requirementName: reminder.requirementName,
+          status: reminder.status,
+          statusLabel: mapReminderStatusLabel(reminder.status),
+          scheduledForLabel: formatDateTimeLabel(reminder.scheduledFor),
+          sentAtLabel: reminder.sentAt
+            ? formatDateTimeLabel(reminder.sentAt)
+            : "Not sent yet",
+          dueDateLabel: reminder.dueDate
+            ? formatDisplayDate(reminder.dueDate)
+            : "No due date",
+          message: reminder.message,
+        }));
+    }),
+  );
+  const primaryFighter = pickPrimaryFighter(fighters, user.profile.displayName);
+
+  return {
+    fighterName: primaryFighter?.fullName ?? user.profile.displayName ?? "Fighter",
+    notifications: eventNotifications
+      .flat()
+      .sort((left, right) => right.scheduledForLabel.localeCompare(left.scheduledForLabel)),
+  };
+}
+
+export async function getFighterHumanActionForUser(
+  user: Pick<AuthUser, "id" | "email" | "profile">,
+): Promise<FighterHumanActionPageData | null> {
+  const fighters = await fightersRepository.listFightersByAccount({
+    userId: user.id,
+    email: user.email,
+  });
+
+  if (fighters.length === 0) {
+    return null;
+  }
+
+  const fights = await listUniqueFightsForFighters(fighters);
+  const contexts = await buildFightContexts(fighters, fights);
+  const cases = await Promise.all(
+    contexts.map(async (context) => {
+      const eventRequirements = await eventRequirementsRepository.listByEventId(
+        context.event.id,
+      );
+      const eventRequirementMap = new Map(
+        eventRequirements.map((requirement) => [requirement.id, requirement]),
+      );
+
+      return context.requirements
+        .filter(
+          (requirement) =>
+            requirement.status === "HUMAN_ACTION" ||
+            requirement.status === "NEEDS_RESUBMISSION",
+        )
+        .map((requirement) => {
+          const eventRequirement = eventRequirementMap.get(
+            requirement.eventRequirementId,
+          );
+
+          return {
+            id: requirement.id,
+            eventName: context.event.name,
+            fightId: context.fight.id,
+            requirementName: eventRequirement?.name ?? "Requirement",
+            status: requirement.status as "HUMAN_ACTION" | "NEEDS_RESUBMISSION",
+            statusLabel: mapRequirementStatusLabel(requirement.status),
+            reason:
+              requirement.aiReason ??
+              requirement.overrideReason ??
+              (requirement.status === "HUMAN_ACTION"
+                ? "This item needs operations review."
+                : "Please submit a replacement document."),
+            dueLabel: requirement.dueDate
+              ? `Due ${formatDisplayDate(requirement.dueDate)}`
+              : "No due date",
+          };
+        });
+    }),
+  );
+  const primaryFighter = pickPrimaryFighter(fighters, user.profile.displayName);
+
+  return {
+    fighterName: primaryFighter?.fullName ?? user.profile.displayName ?? "Fighter",
+    cases: cases
+      .flat()
+      .sort((left, right) => left.eventName.localeCompare(right.eventName)),
   };
 }
 
@@ -512,7 +761,7 @@ function classifyFightGroup(eventDateIso: string, eventStatus: string) {
     return "completed";
   }
 
-  const today = startOfDayIso(CURRENT_LOCAL_DATE);
+  const today = todayStartOfDayIso();
   const fightDate = startOfDayIso(eventDateIso);
 
   return fightDate < today ? "completed" : "upcoming";
@@ -773,4 +1022,8 @@ function getOpponentFighterId(fight: FightRecord, fighterId: string) {
 function startOfDayIso(isoDate: string) {
   const date = new Date(isoDate);
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function todayStartOfDayIso() {
+  return startOfDayIso(new Date().toISOString());
 }

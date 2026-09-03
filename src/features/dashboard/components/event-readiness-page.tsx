@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EventTabs } from "@/features/dashboard/components/event-tabs";
 import type { DashboardEventDetail } from "@/server/services/events.service";
 
 export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
@@ -7,23 +8,34 @@ export function EventReadinessPage({ event }: { event: DashboardEventDetail }) {
   const readyPercent = Math.round((event.readiness.fighters.ready / totalFighters) * 100);
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-5 pb-4">
       <Link
         href={`/dashboard/promoter/events/${event.slug}`}
         className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
       >
         <ArrowLeftIcon className="h-4 w-4" />
-        <span>Back to event</span>
+        <span>Back</span>
       </Link>
+
+      <div className="space-y-1">
+        <h1 className="text-[28px] font-semibold tracking-tight text-text-strong sm:text-[40px]">
+          Event Readiness
+        </h1>
+        <p className="text-lg text-text-body">
+          Monitor automated progress, deadlines, and actions for {event.name}.
+        </p>
+      </div>
+
+      <EventTabs eventSlug={event.slug} activeTab="Event Readiness" />
 
       <section className="grid gap-6 rounded-[24px] bg-surface-dark p-6 text-text-inverse shadow-[var(--shadow-dark-hero)] xl:grid-cols-[1fr_1fr]">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-surface-dark-muted">
-            Event Readiness
+            Readiness overview
           </p>
-          <h1 className="mt-2 text-[38px] font-semibold tracking-tight">
+          <h2 className="mt-2 text-[38px] font-semibold tracking-tight">
             {event.name}
-          </h1>
+          </h2>
           <p className="mt-2 text-[18px] text-surface-dark-body">
             {event.date} - {event.location}
           </p>

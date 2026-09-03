@@ -4,8 +4,10 @@ import type { DashboardEventSummary } from "@/server/services/events.service";
 
 export function PromoterEventsPage({
   events,
+  searchQuery = "",
 }: {
   events: DashboardEventSummary[];
+  searchQuery?: string;
 }) {
   return (
     <main className="space-y-5">
@@ -28,16 +30,18 @@ export function PromoterEventsPage({
         </Link>
       </div>
 
-      <section className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
+      <form action="/dashboard/promoter/events" method="get" className="rounded-[18px] border border-border-subtle bg-panel p-3 shadow-[var(--shadow-card)]">
         <div className="flex h-12 items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 text-text-muted">
           <SearchIcon className="h-5 w-5" />
           <input
             type="text"
             placeholder="Search events..."
+            name="q"
+            defaultValue={searchQuery}
             className="w-full bg-transparent text-[15px] text-text-strong outline-none placeholder:text-text-muted"
           />
         </div>
-      </section>
+      </form>
 
       <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="hidden grid-cols-[2fr_1.2fr_2.2fr_1fr_1fr_1.3fr_1fr] gap-4 border-b border-border-subtle px-10 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted lg:grid">
@@ -78,7 +82,7 @@ export function PromoterEventsPage({
           {events.length === 0 ? (
             <div className="px-5 py-12 text-center lg:px-10">
               <p className="text-[18px] font-medium text-text-strong">
-                No events found
+                {searchQuery ? "No matching events" : "No events found"}
               </p>
               <p className="mt-2 text-[15px] text-text-body">
                 Create your first event to begin operational tracking.

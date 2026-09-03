@@ -1,7 +1,8 @@
-import { badRequest, created, notFound, ok, unauthorized } from "@/lib/api/response";
-import { getEventById } from "@/server/services/events.service";
+import { badRequest, created, forbidden, notFound, ok, unauthorized } from "@/lib/api/response";
+import { getEventByIdForUser } from "@/server/services/events.service";
 import { createFightForEvent } from "@/server/services/fights.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 import type { CreateFightInput } from "@/types/event";
 
 export async function GET(
@@ -14,8 +15,12 @@ export async function GET(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   const { eventId } = await context.params;
-  const event = await getEventById(eventId);
+  const event = await getEventByIdForUser(eventId, user);
 
   if (!event) {
     return notFound(`Event '${eventId}' was not found.`);
@@ -34,8 +39,18 @@ export async function POST(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   try {
     const { eventId } = await context.params;
+    const event = await getEventByIdForUser(eventId, user);
+
+    if (!event) {
+      return notFound(`Event '${eventId}' was not found.`);
+    }
+
     const body = (await request.json()) as CreateFightInput;
     const result = await createFightForEvent(eventId, body, user);
     return created(result);

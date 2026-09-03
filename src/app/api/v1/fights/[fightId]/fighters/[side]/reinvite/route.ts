@@ -1,11 +1,16 @@
 import {
   badRequest,
+  forbidden,
   notFound,
   ok,
   unauthorized,
 } from "@/lib/api/response";
 import { getAuthenticatedUser } from "@/server/services/session.service";
-import { reinviteFightSideById } from "@/server/services/fights.service";
+import { hasAnyRole } from "@/server/security/authorization";
+import {
+  findFightByIdForUser,
+  reinviteFightSideById,
+} from "@/server/services/fights.service";
 
 function isFightSide(value: string): value is "fighterA" | "fighterB" {
   return value === "fighterA" || value === "fighterB";
@@ -21,11 +26,21 @@ export async function POST(
     return unauthorized();
   }
 
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
   try {
     const { fightId, side } = await context.params;
 
     if (!isFightSide(side)) {
       return badRequest("Invalid fight side.");
+    }
+
+    const fight = await findFightByIdForUser(fightId, user);
+
+    if (!fight) {
+      return notFound("Fight was not found.");
     }
 
     const invite = await reinviteFightSideById({

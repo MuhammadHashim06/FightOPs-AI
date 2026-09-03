@@ -1,12 +1,13 @@
-import type { CreateEventRequirementInput } from "@/types/readiness";
+import type { CreateEventRequirementInput, UpdateEventRequirementInput } from "@/types/readiness";
 import { eventRequirementsRepository } from "@/server/repositories/event-requirements.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
 import { fightersRepository } from "@/server/repositories/fighters.repository";
-import { getFightById } from "@/server/repositories/fights.repository";
+import { getFightsByEventId } from "@/server/repositories/fights.repository";
 import { getEventById } from "@/server/services/events.service";
 import { buildDueDateByRequirementId } from "@/server/services/requirement-schedule.service";
-import { syncEventReminderQueue } from "@/server/services/reminders.service";
+import { refreshEventRequirementReminderSchedules } from "@/server/services/reminders.service";
 import { recalculateFighterReadiness } from "@/server/services/readiness.service";
+import { reminderLogsRepository } from "@/server/repositories/reminder-logs.repository";
 import { validateCreateEventRequirementInput } from "@/server/validators/readiness.validator";
 
 export async function listEventRequirements(eventId: string) {
@@ -35,20 +36,23 @@ export async function createEventRequirement(
     sortOrder,
   });
 
-  const fighterLinks = await fightersRepository.listEventFighterLinks(eventId);
+  const [fighterLinks, fights] = await Promise.all([
+    fightersRepository.listEventFighterLinks(eventId),
+    getFightsByEventId(eventId),
+  ]);
+  const fighters = await fightersRepository.listFightersByIds(
+    fighterLinks.map((link) => link.fighterId),
+  );
+  const fightMap = new Map(fights.map((fight) => [fight.id, fight]));
+  const fighterMap = new Map(fighters.map((fighter) => [fighter.id, fighter]));
 
-  for (const link of fighterLinks) {
-    const [fight, fighter] = await Promise.all([
-      link.fightId ? getFightById(link.fightId) : Promise.resolve(null),
-      fightersRepository.findFighterById(link.fighterId),
-    ]);
-
-    await fighterRequirementsRepository.ensureForFighter({
-      eventId,
-      fighterId: link.fighterId,
-      fightId: link.fightId,
-      eventRequirements: [requirement],
-      dueDateByRequirementId:
+  await fighterRequirementsRepository.ensureRequirementForFighters({
+    eventId,
+    eventRequirement: requirement,
+    assignments: fighterLinks.map((link) => {
+      const fight = link.fightId ? fightMap.get(link.fightId) : null;
+      const fighter = fighterMap.get(link.fighterId);
+      const dueDateByRequirementId =
         fight && fighter
           ? buildDueDateByRequirementId({
               event,
@@ -56,16 +60,52 @@ export async function createEventRequirement(
               fighter,
               eventRequirements: [requirement],
             })
-          : undefined,
-    });
+          : null;
 
-    await recalculateFighterReadiness({
-      eventId,
-      fighterId: link.fighterId,
-    });
+      return {
+        fighterId: link.fighterId,
+        fightId: link.fightId,
+        dueDate:
+          dueDateByRequirementId?.get(requirement.id) ?? requirement.dueDate,
+      };
+    }),
+  });
+
+  for (const link of fighterLinks) {
+    await recalculateFighterReadiness({ eventId, fighterId: link.fighterId });
   }
 
-  await syncEventReminderQueue(eventId);
+  await refreshEventRequirementReminderSchedules(eventId, requirement.id);
 
+  return requirement;
+}
+
+export async function updateEventRequirement(
+  eventId: string,
+  requirementId: string,
+  input: UpdateEventRequirementInput,
+) {
+  const current = await eventRequirementsRepository.listByEventId(eventId);
+  const existing = current.find((item) => item.id === requirementId);
+  if (!existing) throw new Error("Requirement was not found.");
+
+  const merged = { ...existing, ...input } as CreateEventRequirementInput;
+  validateCreateEventRequirementInput(merged);
+  const requirement = await eventRequirementsRepository.update(eventId, requirementId, merged);
+  if (!requirement) throw new Error("Requirement was not found.");
+
+  const fighterRequirements = await fighterRequirementsRepository.listByEventRequirementId(eventId, requirementId);
+  await Promise.all(fighterRequirements.map((item) => recalculateFighterReadiness({ eventId, fighterId: item.fighterId })));
+  await refreshEventRequirementReminderSchedules(eventId, requirementId);
+  return requirement;
+}
+
+export async function deleteEventRequirement(eventId: string, requirementId: string) {
+  const requirement = await eventRequirementsRepository.deactivate(eventId, requirementId);
+  if (!requirement) throw new Error("Requirement was not found.");
+  await Promise.all([
+    fighterRequirementsRepository.deleteByEventRequirementId(eventId, requirementId),
+    reminderLogsRepository.deleteByEventRequirementId(eventId, requirementId),
+  ]);
   return requirement;
 }

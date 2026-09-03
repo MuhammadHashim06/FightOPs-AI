@@ -1,4 +1,5 @@
 import type { FighterRecord } from "@/types/event";
+import { isValidObjectId } from "mongoose";
 import { connectToDatabase } from "@/server/db/mongoose";
 import { FightMongoModel } from "@/server/models/fight.model";
 import { FighterMongoModel } from "@/server/models/fighter.model";
@@ -75,19 +76,21 @@ export const fightersRepository = {
       const fighterAId = fight.fighterAId?.toString() ?? null;
       const fighterBId = fight.fighterBId?.toString() ?? null;
 
-      if (fighterAId && !links.has(fighterAId)) {
+      if (fighterAId && isValidObjectId(fighterAId) && !links.has(fighterAId)) {
         links.set(fighterAId, {
           fighterId: fighterAId,
           fightId,
-          opponentFighterId: fighterBId,
+          opponentFighterId:
+            fighterBId && isValidObjectId(fighterBId) ? fighterBId : null,
         });
       }
 
-      if (fighterBId && !links.has(fighterBId)) {
+      if (fighterBId && isValidObjectId(fighterBId) && !links.has(fighterBId)) {
         links.set(fighterBId, {
           fighterId: fighterBId,
           fightId,
-          opponentFighterId: fighterAId,
+          opponentFighterId:
+            fighterAId && isValidObjectId(fighterAId) ? fighterAId : null,
         });
       }
     }
@@ -97,8 +100,16 @@ export const fightersRepository = {
   async listFightersByIds(fighterIds: string[]) {
     await connectToDatabase();
 
+    const validFighterIds = fighterIds.filter((fighterId) =>
+      isValidObjectId(fighterId),
+    );
+
+    if (validFighterIds.length === 0) {
+      return [];
+    }
+
     const fighters = await FighterMongoModel.find({
-      _id: { $in: fighterIds },
+      _id: { $in: validFighterIds },
     }).lean();
 
     return fighters.map(mapFighter);
@@ -109,13 +120,28 @@ export const fightersRepository = {
     return this.listFightersByIds(fighterIds);
   },
   async findFighterById(fighterId: string) {
-    if (!fighterId?.trim()) {
+    if (!fighterId?.trim() || !isValidObjectId(fighterId)) {
       return null;
     }
 
     await connectToDatabase();
 
     const fighter = await FighterMongoModel.findById(fighterId).lean();
+    return fighter ? mapFighter(fighter) : null;
+  },
+  async findFighterByContactEmail(contactEmail: string) {
+    await connectToDatabase();
+
+    const normalizedEmail = contactEmail.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    const fighter = await FighterMongoModel.findOne({
+      managerEmail: normalizedEmail,
+    }).lean();
+
     return fighter ? mapFighter(fighter) : null;
   },
   async findFighterByUserId(userId: string) {

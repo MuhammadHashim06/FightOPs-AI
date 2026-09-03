@@ -13,6 +13,7 @@ export const requirementTemplatesRepository = {
     const templates = await RequirementTemplateMongoModel.find({
       ownerUserId,
       isActive: true,
+      isDefault: { $ne: false },
     })
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
@@ -54,6 +55,7 @@ export const requirementTemplatesRepository = {
       acceptedFileTypes: input.acceptedFileTypes ?? [],
       sortOrder: input.sortOrder,
       isActive: true,
+      isDefault: input.isDefault ?? true,
     });
 
     return mapRequirementTemplate(template.toObject());
@@ -152,6 +154,10 @@ export const requirementTemplatesRepository = {
 
     if (typeof input.isActive === "boolean") {
       updatePayload.isActive = input.isActive;
+    }
+
+    if (typeof input.isDefault === "boolean") {
+      updatePayload.isDefault = input.isDefault;
     }
 
     const template = await RequirementTemplateMongoModel.findByIdAndUpdate(
@@ -414,6 +420,7 @@ function mapRequirementTemplate(template: {
   acceptedFileTypes: string[];
   sortOrder: number;
   isActive: boolean;
+  isDefault?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -452,6 +459,7 @@ function mapRequirementTemplate(template: {
     acceptedFileTypes: template.acceptedFileTypes ?? [],
     sortOrder: template.sortOrder,
     isActive: template.isActive,
+    isDefault: template.isDefault !== false,
     createdAt: template.createdAt.toISOString(),
     updatedAt: template.updatedAt.toISOString(),
   } satisfies RequirementTemplateRecord;

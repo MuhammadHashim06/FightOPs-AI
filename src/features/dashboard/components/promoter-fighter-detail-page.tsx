@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { PromoterEventFighterDetailData } from "@/server/services/events.service";
+import { PromoterFighterRequirements } from "@/features/dashboard/components/promoter-fighter-requirements";
 
 export function PromoterFighterDetailPage({
   data,
@@ -134,54 +135,7 @@ export function PromoterFighterDetailPage({
             Documents and operational checklist
           </h2>
 
-          <div className="mt-5 divide-y divide-border-subtle overflow-hidden rounded-[16px] border border-border-subtle">
-            {data.requirements.map((requirement) => (
-              <div
-                key={requirement.id}
-                className="grid gap-4 bg-panel px-4 py-4 lg:grid-cols-[1fr_0.7fr_0.8fr_auto]"
-              >
-                <div>
-                  <p className="text-[16px] font-semibold text-text-strong">
-                    {requirement.name}
-                  </p>
-                  <p className="mt-1 text-sm text-text-muted">
-                    {requirement.category} - {requirement.dueLabel}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-text-body">
-                    {requirement.description}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
-                    Latest file
-                  </p>
-                  <p className="mt-2 text-sm text-text-body">
-                    {requirement.fileName ?? "No upload yet"}
-                  </p>
-                  {requirement.submittedAt ? (
-                    <p className="mt-1 text-xs text-text-muted">
-                      {requirement.submittedAt}
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
-                    Review note
-                  </p>
-                  <p className="mt-2 text-sm text-text-body">
-                    {requirement.reviewNote ?? "No reviewer note"}
-                  </p>
-                </div>
-                <div className="flex items-start justify-end gap-2">
-                  <StatusPill
-                    label={requirement.statusLabel}
-                    tone={getStatusTone(requirement.statusLabel)}
-                  />
-                  <StatusPill label={requirement.priority} tone="neutral" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <PromoterFighterRequirements requirements={data.requirements} />
         </article>
       </section>
 

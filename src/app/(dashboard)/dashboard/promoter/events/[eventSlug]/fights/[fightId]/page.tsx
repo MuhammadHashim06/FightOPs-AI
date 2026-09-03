@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { FightDetailsPage } from "@/features/dashboard/components/fight-details-page";
 import { getPromoterFightDetailBySlugAndId } from "@/server/services/events.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
 type FightDetailsRouteProps = {
   params: Promise<{
@@ -14,7 +15,10 @@ export default async function FightDetailsRoute({
   params,
 }: FightDetailsRouteProps) {
   const { eventSlug, fightId } = await params;
-  const fight = await getPromoterFightDetailBySlugAndId(eventSlug, fightId);
+  const user = await getAuthenticatedUser();
+  const fight = user
+    ? await getPromoterFightDetailBySlugAndId(eventSlug, fightId, user)
+    : null;
 
   if (!fight) {
     notFound();

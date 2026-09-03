@@ -198,6 +198,12 @@ const requirementTemplateSchema = new Schema(
       required: true,
       index: true,
     },
+    isDefault: {
+      type: Boolean,
+      default: true,
+      required: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -1,11 +1,19 @@
-import { RoleSectionPlaceholder } from "@/features/dashboard/components/role-section-placeholder";
+import { FighterDocumentsPage } from "@/features/dashboard/components/fighter-documents-page";
+import { getFighterDocumentsForUser } from "@/server/services/fighter-portal.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default function FighterDocumentsPage() {
+export default async function FighterDocumentsRoute() {
+  const user = await getAuthenticatedUser();
+  const data = user ? await getFighterDocumentsForUser(user) : null;
+
   return (
-    <RoleSectionPlaceholder
-      eyebrow="Fighter"
-      title="Documents"
-      description="Review and upload required forms, agreements, and supporting documents related to your fights."
+    <FighterDocumentsPage
+      data={
+        data ?? {
+          fighterName: user?.profile.displayName ?? "Fighter",
+          requirements: [],
+        }
+      }
     />
   );
 }

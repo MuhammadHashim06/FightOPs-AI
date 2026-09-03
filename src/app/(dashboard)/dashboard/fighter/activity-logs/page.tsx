@@ -1,11 +1,19 @@
-import { RoleSectionPlaceholder } from "@/features/dashboard/components/role-section-placeholder";
+import { FighterNotificationsPage } from "@/features/dashboard/components/fighter-notifications-page";
+import { getFighterNotificationsForUser } from "@/server/services/fighter-portal.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default function FighterActivityLogsPage() {
+export default async function FighterActivityLogsPage() {
+  const user = await getAuthenticatedUser();
+  const data = user ? await getFighterNotificationsForUser(user) : null;
+
   return (
-    <RoleSectionPlaceholder
-      eyebrow="Fighter"
-      title="Activity logs"
-      description="Follow recent account updates, schedule changes, and important actions connected to your profile."
+    <FighterNotificationsPage
+      data={
+        data ?? {
+          fighterName: user?.profile.displayName ?? "Fighter",
+          notifications: [],
+        }
+      }
     />
   );
 }

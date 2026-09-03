@@ -1,11 +1,12 @@
-import { RoleSectionPlaceholder } from "@/features/dashboard/components/role-section-placeholder";
+import { FighterSettingsPage } from "@/features/dashboard/components/fighter-settings-page";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default function FighterSettingsPage() {
-  return (
-    <RoleSectionPlaceholder
-      eyebrow="Fighter"
-      title="Settings"
-      description="Manage personal preferences, notification settings, and profile details for your workspace."
-    />
-  );
+export default async function FighterSettingsRoute() {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return <FighterSettingsPage user={user} />;
 }

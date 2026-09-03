@@ -1,14 +1,20 @@
 import Link from "next/link";
 
 import { DeleteEventButton } from "@/features/dashboard/components/delete-event-button";
+import { EventTabs } from "@/features/dashboard/components/event-tabs";
 import { FightHeroCard } from "@/features/dashboard/components/fight-hero-card";
 import type { DashboardEventDetail } from "@/server/services/events.service";
+import type { FightCardOptionRecord } from "@/types/event";
 
 export function PromoterEventDetails({
   event,
+  cardGroupOptions,
 }: {
   event: DashboardEventDetail;
+  cardGroupOptions: FightCardOptionRecord[];
 }) {
+  const groupedBouts = groupBouts(event.bouts, cardGroupOptions);
+
   return (
     <main className="space-y-5 pb-2">
       <Link
@@ -35,17 +41,7 @@ export function PromoterEventDetails({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-8 border-b border-border-subtle">
-        {event.tabs.map((tab, index) => (
-          <EventTab
-            key={tab}
-            href={getEventTabHref(event.slug, tab)}
-            active={index === 0}
-          >
-            {tab}
-          </EventTab>
-        ))}
-      </div>
+      <EventTabs eventSlug={event.slug} activeTab="Fight Card" tabs={event.tabs} />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
@@ -58,10 +54,11 @@ export function PromoterEventDetails({
         <div className="flex flex-wrap gap-3">
           <DeleteEventButton eventId={event.id} eventName={event.name} />
           <Link
-            href={`/dashboard/promoter/events/${event.slug}/requirements`}
-            className="inline-flex h-11 items-center justify-center rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+            href={`/dashboard/promoter/events/${event.slug}/edit`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
           >
-            Checklist
+            <EditIcon className="h-4 w-4" />
+            <span>Edit event</span>
           </Link>
           <Link
             href={`/dashboard/promoter/events/${event.slug}/edit-fight-card`}
@@ -69,6 +66,13 @@ export function PromoterEventDetails({
           >
             <SortIcon className="h-4 w-4" />
             <span>Reorder Card</span>
+          </Link>
+          <Link
+            href={`/dashboard/promoter/events/${event.slug}/fight-card-preview`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border border-brand-border bg-brand-surface px-4 text-sm font-medium text-brand transition hover:bg-brand-soft"
+          >
+            <PreviewIcon className="h-4 w-4" />
+            <span>Preview Card</span>
           </Link>
           <Link
             href={`/dashboard/promoter/events/${event.slug}/add-fight`}
@@ -101,12 +105,6 @@ export function PromoterEventDetails({
               />
             </div>
           </div>
-          <Link
-            href={`/dashboard/promoter/events/${event.slug}/readiness`}
-            className="inline-flex h-10 w-fit items-center justify-center rounded-[10px] bg-brand px-4 text-sm font-semibold text-text-inverse transition hover:bg-brand-strong"
-          >
-            View readiness
-          </Link>
         </div>
 
         <div className="grid gap-6 pt-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1.2fr)]">
@@ -130,29 +128,45 @@ export function PromoterEventDetails({
         </div>
       </section>
 
-      <div className="space-y-6">
-        {event.bouts.map((bout) => (
-          <article
-            key={bout.id}
-            className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]"
-          >
-            <FightHeroCard bout={bout} />
-            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-5 py-4">
-              <Link
-                href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}`}
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-              >
-                Open details
-              </Link>
-              <Link
-                href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}/edit`}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong"
-              >
-                <EditIcon className="h-4 w-4" />
-                <span>Edit Fight</span>
-              </Link>
+      <div className="space-y-8">
+        {groupedBouts.map((group) => (
+          <section key={group.value} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <h3 className="text-[18px] font-semibold uppercase tracking-[0.12em] text-text-strong">
+                {group.label}
+              </h3>
+              <div className="h-px flex-1 bg-border-subtle" />
+              <span className="text-sm text-text-muted">
+                {group.bouts.length} bout{group.bouts.length === 1 ? "" : "s"}
+              </span>
             </div>
-          </article>
+
+            <div className="space-y-6">
+              {group.bouts.map((bout) => (
+                <article
+                  key={bout.id}
+                  className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]"
+                >
+                  <FightHeroCard bout={bout} />
+                  <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-5 py-4">
+                    <Link
+                      href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}`}
+                      className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                    >
+                      Open details
+                    </Link>
+                    <Link
+                      href={`/dashboard/promoter/events/${event.slug}/fights/${bout.id}/edit`}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong"
+                    >
+                      <EditIcon className="h-4 w-4" />
+                      <span>Edit Fight</span>
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         ))}
 
         {event.bouts.length === 0 ? (
@@ -168,6 +182,19 @@ export function PromoterEventDetails({
       </div>
     </main>
   );
+}
+
+function groupBouts(
+  bouts: DashboardEventDetail["bouts"],
+  cardGroupOptions: FightCardOptionRecord[],
+) {
+  return cardGroupOptions
+    .map((group) => ({
+      value: group.key,
+      label: group.label,
+      bouts: bouts.filter((bout) => bout.cardGroup === group.key),
+    }))
+    .filter((group) => group.bouts.length > 0);
 }
 
 function ReadinessSummary({
@@ -199,60 +226,6 @@ function ReadinessSummary({
       </div>
     </div>
   );
-}
-
-function EventTab({
-  children,
-  href,
-  active = false,
-}: {
-  children: string;
-  href?: string;
-  active?: boolean;
-}) {
-  const className = `border-b-2 px-3 pb-3 text-[15px] font-medium transition ${
-    active
-      ? "border-brand text-brand"
-      : "border-transparent text-text-body hover:text-text-strong"
-  }`;
-
-  if (href) {
-    return (
-      <Link href={href} className={className}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" className={className}>
-      {children}
-    </button>
-  );
-}
-
-function getEventTabHref(eventSlug: string, tab: string) {
-  if (tab === "Fight Card") {
-    return `/dashboard/promoter/events/${eventSlug}`;
-  }
-
-  if (tab === "Fighters") {
-    return `/dashboard/promoter/events/${eventSlug}/fighters`;
-  }
-
-  if (tab === "Event Readiness") {
-    return `/dashboard/promoter/events/${eventSlug}/readiness`;
-  }
-
-  if (tab === "Required Documents") {
-    return `/dashboard/promoter/events/${eventSlug}/requirements`;
-  }
-
-  if (tab === "Post Reminders") {
-    return `/dashboard/promoter/events/${eventSlug}/post-reminders`;
-  }
-
-  return undefined;
 }
 
 function ReadinessRow({
@@ -389,6 +362,24 @@ function PlusIcon({ className }: { className?: string }) {
     >
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function PreviewIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
     </svg>
   );
 }

@@ -1,6 +1,7 @@
-import { badRequest, created, ok, unauthorized } from "@/lib/api/response";
-import { createEvent, listEvents } from "@/server/services/events.service";
+import { badRequest, created, forbidden, ok, unauthorized } from "@/lib/api/response";
+import { createEvent, listEventsForUser } from "@/server/services/events.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
+import { hasAnyRole } from "@/server/security/authorization";
 import type { CreateEventInput } from "@/types/event";
 
 export async function GET() {
@@ -10,7 +11,11 @@ export async function GET() {
     return unauthorized();
   }
 
-  const events = await listEvents();
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
+  }
+
+  const events = await listEventsForUser(user);
   return ok({ events });
 }
 
@@ -19,6 +24,10 @@ export async function POST(request: Request) {
 
   if (!user) {
     return unauthorized();
+  }
+
+  if (!hasAnyRole(user, ["promoter", "admin"])) {
+    return forbidden();
   }
 
   try {

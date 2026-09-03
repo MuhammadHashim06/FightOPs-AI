@@ -4,11 +4,15 @@ import { eventsRepository } from "@/server/repositories/events.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
 import { fightersRepository } from "@/server/repositories/fighters.repository";
 import { getFightById } from "@/server/repositories/fights.repository";
-import { uploadObject } from "@/server/services/storage.service";
+import { downloadObject, uploadObject } from "@/server/services/storage.service";
 import { buildDueDateByRequirementId } from "@/server/services/requirement-schedule.service";
 import { getEventById } from "@/server/services/events.service";
-import { syncEventReminderQueue } from "@/server/services/reminders.service";
+import {
+  refreshFighterReminderSchedules,
+  refreshRequirementReminderSchedule,
+} from "@/server/services/reminders.service";
 import { recalculateFighterReadiness } from "@/server/services/readiness.service";
+import { auditLogsRepository } from "@/server/repositories/audit-logs.repository";
 import type { AuthUser } from "@/types/auth";
 import type { EventRecord, FighterRecord } from "@/types/event";
 import type { EventRequirementRecord } from "@/types/readiness";
@@ -126,9 +130,65 @@ export async function uploadFighterRequirementDocument(params: {
     eventId: requirement.eventId,
     fighterId: requirement.fighterId,
   });
-  await syncEventReminderQueue(requirement.eventId);
+  await refreshRequirementReminderSchedule(requirement.id);
+
+  await auditLogsRepository.create({
+    eventId: requirement.eventId, fighterId: requirement.fighterId, fightId: requirement.fightId,
+    requirementId: requirement.id, actorUserId: params.user.id, action: "document_uploaded",
+    stateFrom: "WAITING", stateTo: needsHumanReview ? "RECEIVED" : "PROCESSING", note: params.file.name,
+  });
 
   return submission;
+}
+
+export async function downloadDocumentSubmission(params: {
+  user: AuthUser;
+  submissionId: string;
+}) {
+  const submission = await documentSubmissionsRepository.findById(params.submissionId);
+
+  if (!submission) {
+    throw new Error("Document submission was not found.");
+  }
+
+  const event = await eventsRepository.findEventById(submission.eventId);
+
+  if (!event) {
+    throw new Error("Event was not found.");
+  }
+
+  if (params.user.role === "promoter" && event.createdByUserId !== params.user.id) {
+    throw new Error("You cannot access this document.");
+  }
+
+  if (params.user.role === "fighter") {
+    const fighter = await fightersRepository.findFighterById(submission.fighterId);
+    const canAccess =
+      fighter?.userId === params.user.id ||
+      fighter?.managerEmail?.toLowerCase() === params.user.email.toLowerCase();
+
+    if (!canAccess) {
+      throw new Error("You cannot access this document.");
+    }
+  }
+
+  if (params.user.role !== "admin" && params.user.role !== "promoter" && params.user.role !== "fighter") {
+    throw new Error("You cannot access this document.");
+  }
+
+  const body = await downloadObject({
+    provider: submission.storageProvider,
+    key: submission.storageKey,
+  });
+
+  await auditLogsRepository.create({
+    eventId: submission.eventId, fighterId: submission.fighterId, fightId: submission.fightId,
+    requirementId: submission.fighterRequirementId, actorUserId: params.user.id,
+    action: "document_downloaded", stateFrom: submission.status, stateTo: submission.status,
+    note: submission.originalFileName,
+  });
+
+  return { body, mimeType: submission.mimeType, fileName: submission.originalFileName };
 }
 
 export async function listDocumentReviewQueue(user: AuthUser) {
@@ -218,6 +278,13 @@ export async function reviewDocumentSubmission(params: {
     reviewedAt: now,
   });
 
+  await auditLogsRepository.create({
+    eventId: submission.eventId, fighterId: submission.fighterId, fightId: submission.fightId,
+    requirementId: submission.fighterRequirementId, actorUserId: params.user.id,
+    action: `document_${params.decision}d`, stateFrom: submission.status, stateTo: status,
+    note: params.note,
+  });
+
   await fighterRequirementsRepository.updateStatus({
     fighterRequirementId: submission.fighterRequirementId,
     status: params.decision === "accept" ? "ACCEPTED" : "NEEDS_RESUBMISSION",
@@ -251,7 +318,11 @@ export async function reviewDocumentSubmission(params: {
     eventId: submission.eventId,
     fighterId: submission.fighterId,
   });
-  await syncEventReminderQueue(submission.eventId);
+  if (params.decision === "accept" && eventRequirement?.isSignedAgreement) {
+    await refreshFighterReminderSchedules(submission.eventId, submission.fighterId);
+  } else {
+    await refreshRequirementReminderSchedule(submission.fighterRequirementId);
+  }
 
   return reviewedSubmission;
 }

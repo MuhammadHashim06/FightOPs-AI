@@ -1,11 +1,13 @@
 import type {
   AcceptFighterInviteInput,
+  ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
   ResendVerificationInput,
   RegisterInput,
   ResetPasswordInput,
   VerifyEmailInput,
+  UpdateProfileInput,
 } from "@/types/auth";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,6 +48,24 @@ export function validateVerifyEmailInput(input: VerifyEmailInput) {
 
 export function validateResendVerificationInput(input: ResendVerificationInput) {
   assertEmail(input.email);
+}
+
+export function validateUpdateProfileInput(input: UpdateProfileInput) {
+  assertRequired(input.firstName, "First name is required.");
+  assertRequired(input.lastName, "Last name is required.");
+
+  if (typeof input.phone !== "undefined" && input.phone !== null && input.phone.trim().length > 40) {
+    throw new Error("Phone number must be 40 characters or fewer.");
+  }
+}
+
+export function validateChangePasswordInput(input: ChangePasswordInput) {
+  assertRequired(input.currentPassword, "Current password is required.");
+  assertPassword(input.newPassword);
+
+  if (input.newPassword !== input.confirmPassword) {
+    throw new Error("Passwords do not match.");
+  }
 }
 
 export function validateAcceptFighterInviteInput(input: AcceptFighterInviteInput) {

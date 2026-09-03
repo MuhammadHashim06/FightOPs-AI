@@ -1,5 +1,5 @@
 import { createHmac, createHash, randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { env } from "@/server/config/env";
@@ -50,10 +50,16 @@ async function uploadToLocal(input: {
   key: string;
   buffer: Buffer;
 }): Promise<UploadResult> {
-  const uploadRoot = path.join(process.cwd(), "storage", "uploads");
-  const destination = path.join(uploadRoot, input.key);
+  const uploadRoot = path.resolve(
+    /* turbopackIgnore: true */ process.cwd(),
+    env.localUploadDir,
+  );
+  const destination = path.join(
+    /* turbopackIgnore: true */ uploadRoot,
+    input.key,
+  );
 
-  if (!destination.startsWith(uploadRoot)) {
+  if (path.relative(uploadRoot, destination).startsWith("..")) {
     throw new Error("Invalid upload path.");
   }
 
@@ -67,19 +73,60 @@ async function uploadToLocal(input: {
   };
 }
 
+export async function downloadObject(input: {
+  provider: "local" | "r2";
+  key: string;
+}): Promise<Buffer> {
+  if (input.provider === "local") {
+    const uploadRoot = path.resolve(
+      /* turbopackIgnore: true */ process.cwd(),
+      env.localUploadDir,
+    );
+    const destination = path.resolve(
+      /* turbopackIgnore: true */ uploadRoot,
+      input.key,
+    );
+
+    if (path.relative(uploadRoot, destination).startsWith("..")) {
+      throw new Error("Invalid download path.");
+    }
+
+    return readFile(destination);
+  }
+
+  assertR2Configured();
+  const host = `${env.r2AccountId}.r2.cloudflarestorage.com`;
+  const endpoint = `https://${host}/${env.r2BucketName}/${encodeR2Key(input.key)}`;
+  const bodyHash = createHash("sha256").update(Buffer.alloc(0)).digest("hex");
+  const headers = await signR2Request({
+    method: "GET",
+    host,
+    key: input.key,
+    bodyHash,
+  });
+  const response = await fetch(endpoint, { headers });
+
+  if (!response.ok) {
+    throw new Error(`R2 download failed with status ${response.status}.`);
+  }
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
 async function uploadToR2(input: {
   key: string;
   buffer: Buffer;
-  mimeType: string;
+  mimeType?: string;
 }): Promise<UploadResult> {
   assertR2Configured();
 
   const host = `${env.r2AccountId}.r2.cloudflarestorage.com`;
   const endpoint = `https://${host}/${env.r2BucketName}/${encodeR2Key(input.key)}`;
-  const signedHeaders = await signR2PutRequest({
+  const signedHeaders = await signR2Request({
+    method: "PUT",
     host,
     key: input.key,
-    body: input.buffer,
+    bodyHash: createHash("sha256").update(input.buffer).digest("hex"),
     mimeType: input.mimeType,
   });
 
@@ -113,32 +160,32 @@ function assertR2Configured() {
   }
 }
 
-async function signR2PutRequest(input: {
+async function signR2Request(input: {
+  method: "GET" | "PUT";
   host: string;
   key: string;
-  body: Buffer;
-  mimeType: string;
+  bodyHash: string;
+  mimeType?: string;
 }) {
   const now = new Date();
   const amzDate = toAmzDate(now);
   const dateStamp = amzDate.slice(0, 8);
-  const payloadHash = createHash("sha256").update(input.body).digest("hex");
   const canonicalUri = `/${env.r2BucketName}/${encodeR2Key(input.key)}`;
-  const canonicalHeaders = [
-    `content-type:${input.mimeType}`,
-    `host:${input.host}`,
-    `x-amz-content-sha256:${payloadHash}`,
-    `x-amz-date:${amzDate}`,
-    "",
-  ].join("\n");
-  const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
+  const canonicalHeaderEntries = [
+    ...(input.method === "PUT" ? [["content-type", input.mimeType ?? "application/octet-stream"]] : []),
+    ["host", input.host],
+    ["x-amz-content-sha256", input.bodyHash],
+    ["x-amz-date", amzDate],
+  ].sort(([left], [right]) => left.localeCompare(right));
+  const canonicalHeaders = `${canonicalHeaderEntries.map(([key, value]) => `${key}:${value}`).join("\n")}\n`;
+  const signedHeaders = canonicalHeaderEntries.map(([key]) => key).join(";");
   const canonicalRequest = [
-    "PUT",
+    input.method,
     canonicalUri,
     "",
     canonicalHeaders,
     signedHeaders,
-    payloadHash,
+    input.bodyHash,
   ].join("\n");
   const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
   const stringToSign = [
@@ -153,9 +200,11 @@ async function signR2PutRequest(input: {
     .digest("hex");
 
   return {
-    "Content-Type": input.mimeType,
+    ...(input.method === "PUT"
+      ? { "Content-Type": input.mimeType ?? "application/octet-stream" }
+      : {}),
     Host: input.host,
-    "X-Amz-Content-Sha256": payloadHash,
+    "X-Amz-Content-Sha256": input.bodyHash,
     "X-Amz-Date": amzDate,
     Authorization: `AWS4-HMAC-SHA256 Credential=${env.r2AccessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
   };

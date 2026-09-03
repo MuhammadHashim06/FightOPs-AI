@@ -86,6 +86,45 @@ const fighterRequirementSchema = new Schema(
       type: Date,
       default: null,
     },
+    nextReminderAt: {
+      type: Date,
+      default: null,
+    },
+    lastReminderAt: {
+      type: Date,
+      default: null,
+    },
+    reminderAttemptCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    reminderLockedUntil: {
+      type: Date,
+      default: null,
+    },
+    reminderClaimToken: {
+      type: String,
+      default: null,
+    },
+    nextDeadlineAlertAt: {
+      type: Date,
+      default: null,
+    },
+    deadlineAlertSentAt: {
+      type: Date,
+      default: null,
+    },
+    deadlineAlertAttemptCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    reminderStoppedReason: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -96,6 +135,8 @@ fighterRequirementSchema.index(
   { eventId: 1, fighterId: 1, eventRequirementId: 1 },
   { unique: true },
 );
+fighterRequirementSchema.index({ status: 1, nextReminderAt: 1, reminderLockedUntil: 1 });
+fighterRequirementSchema.index({ status: 1, nextDeadlineAlertAt: 1, reminderLockedUntil: 1 });
 
 export type FighterRequirementDocument = InferSchemaType<typeof fighterRequirementSchema>;
 

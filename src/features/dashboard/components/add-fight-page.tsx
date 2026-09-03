@@ -6,13 +6,18 @@ import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useToast } from "@/providers/toast-provider";
+import type { FightCardOptionRecord } from "@/types/event";
 
 export function AddFightPage({
   eventSlug,
   eventId,
+  cardGroupOptions,
+  weightClassOptions,
 }: {
   eventSlug: string;
   eventId?: string;
+  cardGroupOptions: FightCardOptionRecord[];
+  weightClassOptions: FightCardOptionRecord[];
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -21,6 +26,8 @@ export function AddFightPage({
     fighterA: "",
     fighterB: "",
   });
+  const [selectedWeightClass, setSelectedWeightClass] = useState("");
+  const [catchweightKg, setCatchweightKg] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +60,9 @@ export function AddFightPage({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          cardGroup: String(formData.get("cardGroup") ?? "main_card"),
           division,
+          catchweightKg: catchweightKg ? Number(catchweightKg) : null,
           fighterA: buildFighterPayload(formData, "fighterA", division),
           fighterB: buildFighterPayload(formData, "fighterB", division),
         }),
@@ -106,24 +115,55 @@ export function AddFightPage({
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-2">
-        <div className="xl:col-span-2">
+        <div className="grid gap-5 sm:grid-cols-2 xl:col-span-2">
+          <FormField label="Card group" required>
+            <select
+              name="cardGroup"
+              className={`${inputClassName} appearance-none`}
+              defaultValue={cardGroupOptions[0]?.key ?? "main_card"}
+              required
+            >
+              {cardGroupOptions.map((group) => (
+                <option key={group.key} value={group.key}>
+                  {group.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
           <FormField label="Weight class" required>
             <select
               name="division"
               className={`${inputClassName} appearance-none`}
-              defaultValue=""
+              value={selectedWeightClass}
+              onChange={(event) => setSelectedWeightClass(event.target.value)}
               required
             >
               <option value="" disabled>
                 Select weight class
               </option>
               {weightClassOptions.map((weightClass) => (
-                <option key={weightClass} value={weightClass}>
-                  {weightClass}
+                <option key={weightClass.key} value={weightClass.key}>
+                  {formatWeightClassOption(weightClass)}
                 </option>
               ))}
             </select>
           </FormField>
+          {weightClassOptions.find((option) => option.key === selectedWeightClass)
+            ?.allowsCustomWeight ? (
+            <FormField label="Catchweight (kg)" required>
+              <input
+                name="catchweightKg"
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={catchweightKg}
+                onChange={(event) => setCatchweightKg(event.target.value)}
+                placeholder="e.g. 72.0"
+                className={inputClassName}
+                required
+              />
+            </FormField>
+          ) : null}
         </div>
 
         <FighterFormCard
@@ -311,18 +351,17 @@ function buildFighterPayload(
   return hasAnyValue ? payload : null;
 }
 
-const weightClassOptions = [
-  "Strawweight",
-  "Flyweight",
-  "Bantamweight",
-  "Featherweight",
-  "Lightweight",
-  "Welterweight",
-  "Middleweight",
-  "Light Heavyweight",
-  "Heavyweight",
-  "Catchweight",
-];
+function formatWeightClassOption(option: FightCardOptionRecord) {
+  if (option.allowsCustomWeight) {
+    return `${option.label} - custom limit`;
+  }
+
+  if (option.weightLimitKg !== null && option.weightLimitLb !== null) {
+    return `${option.label} -${option.weightLimitKg} kg (${option.weightLimitLb} lb)`;
+  }
+
+  return option.label;
+}
 
 function ArrowLeftIcon({ className }: { className?: string }) {
   return (

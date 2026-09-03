@@ -8,6 +8,7 @@ export type UserProfile = {
   firstName: string;
   lastName: string;
   displayName: string;
+  phone?: string | null;
 };
 
 export type AuthUser = {
@@ -97,6 +98,18 @@ export type VerifyEmailInput = {
 
 export type ResendVerificationInput = {
   email: string;
+};
+
+export type UpdateProfileInput = {
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+};
+
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 };
 
 export type AcceptFighterInviteInput = {

@@ -20,9 +20,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [3],
-    reminderSubject: "Passport or ID required",
+    reminderSubject: "{{requirementName}} required for {{eventName}}",
     reminderMessage:
-      "Please upload the fighter's passport or government ID before the deadline.",
+      "Please upload {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     humanVerificationRequired: false,
     acceptedFileTypes: ["pdf", "jpg", "jpeg", "png"],
   },
@@ -39,9 +39,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [5],
-    reminderSubject: "Medical clearance required",
+    reminderSubject: "{{requirementName}} required for {{eventName}}",
     reminderMessage:
-      "Please upload the fighter's medical clearance covering event week.",
+      "Please upload {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     humanVerificationRequired: true,
     acceptedFileTypes: ["pdf", "jpg", "jpeg", "png"],
   },
@@ -58,9 +58,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [3],
-    reminderSubject: "Insurance certificate required",
+    reminderSubject: "{{requirementName}} required for {{eventName}}",
     reminderMessage:
-      "Please upload the active insurance certificate for the fighter and bout.",
+      "Please upload {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     humanVerificationRequired: false,
     acceptedFileTypes: ["pdf", "jpg", "jpeg", "png"],
   },
@@ -77,9 +77,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [5],
-    reminderSubject: "Signed agreement required",
+    reminderSubject: "{{requirementName}} required for {{eventName}}",
     reminderMessage:
-      "Please upload the signed agreement before final bout approval.",
+      "Please upload {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     humanVerificationRequired: true,
     isSignedAgreement: true,
     acceptedFileTypes: ["pdf"],
@@ -97,9 +97,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [1],
-    reminderSubject: "Weight confirmation needed",
+    reminderSubject: "{{requirementName}} needed for {{eventName}}",
     reminderMessage:
-      "Please confirm the fighter's final weight details before event week.",
+      "Please complete {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     humanVerificationRequired: false,
   },
   {
@@ -116,9 +116,9 @@ export const defaultRequirementTemplates: CreateRequirementTemplateInput[] = [
     reminderEnabled: true,
     reminderCadence: "daily_until_resolved",
     reminderDaysBeforeDue: [2],
-    reminderSubject: "Travel details needed",
+    reminderSubject: "{{requirementName}} needed for {{eventName}}",
     reminderMessage:
-      "Please share travel dates, times, from, and to details for event coordination.",
+      "Please complete {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
     structuredFields: [
       {
         key: "departure_date",
@@ -374,6 +374,11 @@ export async function listRequirementTemplatesForUser(ownerUserId: string) {
   }
 
   return templates;
+}
+
+export async function listDefaultRequirementTemplatesForUser(ownerUserId: string) {
+  const templates = await requirementTemplatesRepository.listByOwnerUserId(ownerUserId);
+  return templates.filter((template) => template.isDefault);
 }
 
 export async function createRequirementTemplateForUser(

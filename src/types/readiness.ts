@@ -96,6 +96,8 @@ export type CreateEventRequirementInput = {
   sortOrder?: number;
 };
 
+export type UpdateEventRequirementInput = Partial<CreateEventRequirementInput>;
+
 export type RequirementTemplateRecord = {
   id: string;
   ownerUserId: string;
@@ -120,6 +122,7 @@ export type RequirementTemplateRecord = {
   acceptedFileTypes: string[];
   sortOrder: number;
   isActive: boolean;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -145,6 +148,7 @@ export type CreateRequirementTemplateInput = {
   isSignedAgreement?: boolean;
   acceptedFileTypes?: string[];
   sortOrder?: number;
+  isDefault?: boolean;
 };
 
 export type UpdateRequirementTemplateInput =
@@ -153,6 +157,7 @@ export type UpdateRequirementTemplateInput =
   };
 
 export type ReminderLogStatus = "PENDING" | "SENT" | "SKIPPED" | "FAILED";
+export type ReminderLogKind = "fighter_reminder" | "deadline_alert";
 
 export type ReminderLogRecord = {
   id: string;
@@ -160,6 +165,7 @@ export type ReminderLogRecord = {
   fighterId: string;
   fightId: string | null;
   eventRequirementId: string;
+  kind: ReminderLogKind;
   recipientName: string;
   recipientEmail: string;
   requirementName: string;
@@ -170,6 +176,9 @@ export type ReminderLogRecord = {
   message: string;
   status: ReminderLogStatus;
   sentAt: string | null;
+  attemptCount: number;
+  lastError: string | null;
+  nextAttemptAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -226,6 +235,15 @@ export type FighterRequirementRecord = {
   aiReason: string | null;
   latestSubmissionId: string | null;
   completedAt: string | null;
+  nextReminderAt: string | null;
+  lastReminderAt: string | null;
+  reminderAttemptCount: number;
+  reminderLockedUntil: string | null;
+  reminderClaimToken: string | null;
+  nextDeadlineAlertAt: string | null;
+  deadlineAlertSentAt: string | null;
+  deadlineAlertAttemptCount: number;
+  reminderStoppedReason: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -72,6 +72,12 @@ export const documentSubmissionsRepository = {
 
     return submissions.map(mapSubmission);
   },
+  async deleteByEventId(eventId: string) {
+    await connectToDatabase();
+
+    const result = await DocumentSubmissionMongoModel.deleteMany({ eventId });
+    return result.deletedCount ?? 0;
+  },
   async updateReviewStatus(params: {
     submissionId: string;
     status: DocumentSubmissionStatus;

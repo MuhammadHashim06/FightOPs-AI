@@ -217,8 +217,8 @@ try {
         reminderEnabled: true,
         reminderCadence: "daily_until_resolved",
         reminderDaysBeforeDue: template.reminderDaysBeforeDue,
-        reminderSubject: `${event.name}: ${template.name} needed`,
-        reminderMessage: `Please submit ${template.name} so FightOps AI can continue event readiness checks.`,
+        reminderSubject: "{{requirementName}} needed for {{eventName}}",
+        reminderMessage: "Please submit {{requirementName}} for {{fighterName}} before {{dueDate}}. You have {{daysRemaining}} day(s) remaining.",
         structuredFields: [],
         documentBlocks: [
           {
@@ -308,6 +308,17 @@ try {
     for (const [requirementIndex, eventRequirement] of eventRequirements.entries()) {
       const template = requirementTemplates[requirementIndex];
       const status = requirementStatusForScenario(scenario, template.key);
+      const dueDate = calculateFighterDueDate(
+        template,
+        eventDate,
+        fighter.inviteAcceptedAt,
+      );
+      const reminderSchedule = buildSeedReminderSchedule({
+        status,
+        dueDate,
+        eventRequirement,
+        now,
+      });
       const fighterRequirement = await insertOne(collections.fighterRequirements, {
         eventId: event._id,
         fighterId: fighter._id,
@@ -316,7 +327,7 @@ try {
         status,
         required: true,
         priority: eventRequirement.priority,
-        dueDate: calculateFighterDueDate(template, eventDate, fighter.inviteAcceptedAt),
+        dueDate,
         humanVerificationRequired: eventRequirement.humanVerificationRequired,
         overrideReason: status === "NEEDS_RESUBMISSION" ? "Uploaded file was incomplete." : null,
         aiConfidence: status === "HUMAN_ACTION" ? confidenceForFighter(fighter.fullName) : null,
@@ -329,6 +340,7 @@ try {
           status === "ACCEPTED" || status === "NOT_APPLICABLE"
             ? new Date("2026-08-24T11:00:00.000Z")
             : null,
+        ...reminderSchedule,
         createdAt: now,
         updatedAt: now,
       });
@@ -357,7 +369,7 @@ try {
           fighter,
           fightId: fightLink?.fightId ?? null,
           eventRequirement,
-          dueDate: calculateFighterDueDate(template, eventDate, fighter.inviteAcceptedAt),
+          dueDate,
           now,
         });
       }
@@ -655,39 +667,86 @@ async function createReminderHistory({
     return;
   }
 
-  const baseSchedule = [addDays(dueDate, -2), addDays(dueDate, -1), dueDate];
-
-  for (const [index, scheduledFor] of baseSchedule.entries()) {
-    await collections.reminders.updateOne(
-      {
+  const scheduledFor = addDays(dueDate, -2);
+  await collections.reminders.updateOne(
+    {
+      eventId: event._id,
+      fighterId: fighter._id,
+      eventRequirementId: eventRequirement._id,
+      kind: "fighter_reminder",
+      scheduledFor,
+    },
+    {
+      $setOnInsert: {
         eventId: event._id,
         fighterId: fighter._id,
+        fightId,
         eventRequirementId: eventRequirement._id,
+        kind: "fighter_reminder",
+        recipientName: fighter.managerName,
+        recipientEmail: fighter.managerEmail,
+        requirementName: eventRequirement.name,
+        eventName: event.name,
         scheduledFor,
+        dueDate,
+        subject: `${event.name}: ${eventRequirement.name} reminder`,
+        message: `Please submit ${eventRequirement.name} for ${fighter.fullName} before ${dueDate.toISOString().slice(0, 10)}.`,
+        status: "SENT",
+        sentAt: scheduledFor,
+        attemptCount: 1,
+        lastError: null,
+        nextAttemptAt: null,
+        createdAt: now,
+        updatedAt: now,
       },
-      {
-        $setOnInsert: {
-          eventId: event._id,
-          fighterId: fighter._id,
-          fightId,
-          eventRequirementId: eventRequirement._id,
-          recipientName: fighter.managerName,
-          recipientEmail: fighter.managerEmail,
-          requirementName: eventRequirement.name,
-          eventName: event.name,
-          scheduledFor,
-          dueDate,
-          subject: `${event.name}: ${eventRequirement.name} reminder`,
-          message: `Please submit ${eventRequirement.name} for ${fighter.fullName} before ${dueDate.toISOString().slice(0, 10)}.`,
-          status: index === 0 ? "SENT" : "PENDING",
-          sentAt: index === 0 ? addDays(scheduledFor, 0) : null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
-      { upsert: true },
-    );
+    },
+    { upsert: true },
+  );
+}
+
+function buildSeedReminderSchedule({ status, dueDate, eventRequirement, now }) {
+  if (!["WAITING", "NEEDS_RESUBMISSION"].includes(status) || !dueDate) {
+    return {
+      nextReminderAt: null,
+      lastReminderAt: null,
+      reminderAttemptCount: 0,
+      reminderLockedUntil: null,
+      reminderClaimToken: null,
+      nextDeadlineAlertAt: null,
+      deadlineAlertSentAt: null,
+      deadlineAlertAttemptCount: 0,
+      reminderStoppedReason: `status_${status.toLowerCase()}`,
+    };
   }
+
+  const reminderStart = addDays(
+    dueDate,
+    -(eventRequirement.reminderDaysBeforeDue?.[0] ?? 0),
+  );
+  const nextReminderAt = reminderStart > now ? reminderStart : now;
+  const nextDeadlineAlertAt = new Date(
+    Date.UTC(
+      dueDate.getUTCFullYear(),
+      dueDate.getUTCMonth(),
+      dueDate.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+
+  return {
+    nextReminderAt,
+    lastReminderAt: null,
+    reminderAttemptCount: 0,
+    reminderLockedUntil: null,
+    reminderClaimToken: null,
+    nextDeadlineAlertAt,
+    deadlineAlertSentAt: null,
+    deadlineAlertAttemptCount: 0,
+    reminderStoppedReason: null,
+  };
 }
 
 function scenarioReadiness(scenario) {

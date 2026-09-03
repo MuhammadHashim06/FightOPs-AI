@@ -15,6 +15,7 @@ import {
 export interface AuthRepository {
   findUserById(userId: string): Promise<AuthUser | null>;
   findUserByEmail(email: string): Promise<AuthUser | null>;
+  listUsersByRole(role: AuthUser["role"]): Promise<AuthUser[]>;
   createUser(user: Omit<AuthUser, "id">): Promise<AuthUser>;
   updateUser(user: AuthUser): Promise<AuthUser>;
   createSession(session: Omit<AuthSession, "id">): Promise<AuthSession>;
@@ -50,6 +51,12 @@ export const authRepository: AuthRepository = {
     }).lean();
 
     return user ? mapUser(user) : null;
+  },
+  async listUsersByRole(role) {
+    await connectToDatabase();
+
+    const users = await UserMongoModel.find({ role, status: "active" }).lean();
+    return users.map(mapUser);
   },
   async createUser(user) {
     await connectToDatabase();
@@ -203,7 +210,10 @@ function mapUser(user: {
     status: user.status,
     emailVerifiedAt: toIso(user.emailVerifiedAt),
     passwordHash: user.passwordHash,
-    profile: user.profile,
+    profile: {
+      ...user.profile,
+      phone: user.profile.phone ?? null,
+    },
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
     lastLoginAt: toIso(user.lastLoginAt),

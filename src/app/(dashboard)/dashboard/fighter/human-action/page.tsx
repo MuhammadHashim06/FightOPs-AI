@@ -1,11 +1,19 @@
-import { RoleSectionPlaceholder } from "@/features/dashboard/components/role-section-placeholder";
+import { FighterHumanActionPage } from "@/features/dashboard/components/fighter-human-action-page";
+import { getFighterHumanActionForUser } from "@/server/services/fighter-portal.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default function FighterHumanActionPage() {
+export default async function FighterHumanActionRoute() {
+  const user = await getAuthenticatedUser();
+  const data = user ? await getFighterHumanActionForUser(user) : null;
+
   return (
-    <RoleSectionPlaceholder
-      eyebrow="Fighter"
-      title="Human action"
-      description="See any pending requests, missing items, or manual actions that still need your attention."
+    <FighterHumanActionPage
+      data={
+        data ?? {
+          fighterName: user?.profile.displayName ?? "Fighter",
+          cases: [],
+        }
+      }
     />
   );
 }

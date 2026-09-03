@@ -35,10 +35,31 @@ export const fighterInvitesRepository = {
       consumedAt: new Date(),
     });
   },
+  async consumePendingByFightAndFighter(fightId: string, fighterId: string) {
+    await connectToDatabase();
+
+    const result = await FighterInviteTokenMongoModel.updateMany(
+      {
+        fightId,
+        fighterId,
+        consumedAt: null,
+        expiresAt: { $gt: new Date() },
+      },
+      { $set: { consumedAt: new Date() } },
+    );
+
+    return result.modifiedCount ?? 0;
+  },
   async deleteByFightId(fightId: string) {
     await connectToDatabase();
 
     const result = await FighterInviteTokenMongoModel.deleteMany({ fightId });
+    return result.deletedCount ?? 0;
+  },
+  async deleteByEventId(eventId: string) {
+    await connectToDatabase();
+
+    const result = await FighterInviteTokenMongoModel.deleteMany({ eventId });
     return result.deletedCount ?? 0;
   },
   async deleteByFightAndFighter(fightId: string, fighterId: string) {

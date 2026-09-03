@@ -2,25 +2,28 @@
 
 import { useState } from "react";
 
-import {
-  activityLogEntries,
-  type ActivityActorType,
-} from "@/features/dashboard/data/promoter-events";
+import type { ActivityActorType, ActivityLogEntry } from "@/types/activity";
 
 const actorFilters = [
   { label: "All actors", value: "all" },
   { label: "AI", value: "ai" },
   { label: "Managers", value: "manager" },
   { label: "Fighters", value: "fighter" },
+  { label: "Promoters", value: "promoter" },
+  { label: "Admins", value: "admin" },
 ] as const;
 
-export function PromoterActivityPage() {
+export function PromoterActivityPage({
+  entries,
+}: {
+  entries: ActivityLogEntry[];
+}) {
   const [searchValue, setSearchValue] = useState("");
   const [actorFilter, setActorFilter] =
     useState<(typeof actorFilters)[number]["value"]>("all");
 
   const normalizedSearch = searchValue.trim().toLowerCase();
-  const filteredEntries = activityLogEntries.filter((entry) => {
+  const filteredEntries = (entries ?? []).filter((entry) => {
     const matchesSearch =
       !normalizedSearch ||
       entry.actorLabel.toLowerCase().includes(normalizedSearch) ||
@@ -143,7 +146,9 @@ export function PromoterActivityPage() {
         </div>
 
         <div className="flex flex-col gap-4 border-t border-border-subtle px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-10">
-          <p className="text-[15px] text-text-muted">Showing 1-10 of 42 rows</p>
+          <p className="text-[15px] text-text-muted">
+            Showing {filteredEntries.length} of {entries.length} rows
+          </p>
 
           <div className="flex items-center gap-2 self-end">
             <PaginationButton label="Prev" muted />

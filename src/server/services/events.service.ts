@@ -1,5 +1,7 @@
 import type { CreateEventInput, UpdateEventInput } from "@/types/event";
+import type { AuthUser } from "@/types/auth";
 import type {
+  DocumentSubmissionStatus,
   EventRequirementRecord,
   FighterRequirementRecord,
   FighterRequirementStatus,
@@ -10,9 +12,16 @@ import { eventRequirementsRepository } from "@/server/repositories/event-require
 import { fightersRepository } from "@/server/repositories/fighters.repository";
 import { fighterReadinessRepository } from "@/server/repositories/fighter-readiness.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
-import { getFightById, getFightsByEventId } from "@/server/repositories/fights.repository";
+import { fighterInvitesRepository } from "@/server/repositories/fighter-invites.repository";
+import {
+  deleteFightsByEventId,
+  getFightById,
+  getFightsByEventId,
+} from "@/server/repositories/fights.repository";
 import { reminderLogsRepository } from "@/server/repositories/reminder-logs.repository";
+import { auditLogsRepository } from "@/server/repositories/audit-logs.repository";
 import { applyRequirementTemplatesToEvent } from "@/server/services/requirement-templates.service";
+import { canAccessEvent } from "@/server/security/authorization";
 import {
   validateCreateEventInput,
   validateUpdateEventInput,
@@ -77,13 +86,16 @@ export type DashboardEventDetail = DashboardEventSummary & {
     id: string;
     label: string;
     order: string;
+    cardGroup: string;
     division: string;
+    catchweightKg: number | null;
     readinessPercent: number;
     leftFighter: {
       name: string;
       division: string;
       country: string;
       stance: string;
+      photoUrl: string | null;
       readinessLabel: string;
       readinessPercent: number;
       managerName?: string;
@@ -98,6 +110,7 @@ export type DashboardEventDetail = DashboardEventSummary & {
       division: string;
       country: string;
       stance: string;
+      photoUrl: string | null;
       readinessLabel: string;
       readinessPercent: number;
       managerName?: string;
@@ -244,6 +257,9 @@ export type PromoterEventFighterDetailData = {
     description: string;
     fileName: string | null;
     submittedAt: string | null;
+    submissionId: string | null;
+    submissionStatus: DocumentSubmissionStatus | null;
+    fileUrl: string | null;
     reviewNote: string | null;
   }>;
   timeline: Array<{
@@ -262,18 +278,50 @@ const defaultTabs = [
   "Required Documents",
   "Post Reminders",
 ];
-const CURRENT_LOCAL_DATE = "2026-08-31T00:00:00.000Z";
-
 export async function listEvents() {
   return eventsRepository.listEvents();
+}
+
+export async function listEventsForUser(user: AuthUser) {
+  if (user.role === "admin") {
+    return listEvents();
+  }
+
+  if (user.role === "promoter") {
+    return eventsRepository.listEventsByOwnerId(user.id);
+  }
+
+  return [];
 }
 
 export async function getEventById(eventId: string) {
   return eventsRepository.findEventById(eventId);
 }
 
+export async function getEventByIdForUser(eventId: string, user: AuthUser) {
+  const event =
+    user.role === "admin"
+      ? await getEventById(eventId)
+      : user.role === "promoter"
+        ? await eventsRepository.findEventByIdAndOwner(eventId, user.id)
+        : null;
+
+  return event && canAccessEvent(user, event) ? event : null;
+}
+
 export async function getEventBySlug(slug: string) {
   return eventsRepository.findEventBySlug(slug);
+}
+
+export async function getEventBySlugForUser(slug: string, user: AuthUser) {
+  const event =
+    user.role === "admin"
+      ? await getEventBySlug(slug)
+      : user.role === "promoter"
+        ? await eventsRepository.findEventBySlugAndOwner(slug, user.id)
+        : null;
+
+  return event && canAccessEvent(user, event) ? event : null;
 }
 
 export async function createEvent(input: CreateEventInput, createdByUserId: string) {
@@ -296,6 +344,12 @@ export async function createEvent(input: CreateEventInput, createdByUserId: stri
     templateIds: input.templateIds,
   });
 
+  await auditLogsRepository.create({
+    eventId: event.id, fighterId: null, fightId: null, requirementId: null,
+    actorUserId: createdByUserId, action: "event_created", stateFrom: "NONE", stateTo: event.status,
+    note: event.name,
+  });
+
   return event;
 }
 
@@ -312,17 +366,93 @@ export async function updateEvent(eventId: string, input: UpdateEventInput) {
   });
 }
 
-export async function deleteEvent(eventId: string) {
-  return eventsRepository.deleteEvent(eventId);
+export async function updateEventForUser(
+  eventId: string,
+  input: UpdateEventInput,
+  user: AuthUser,
+) {
+  const event = await getEventByIdForUser(eventId, user);
+
+  if (!event) {
+    return null;
+  }
+
+  const updated = await updateEvent(event.id, input);
+  if (updated) {
+    await auditLogsRepository.create({
+      eventId: updated.id, fighterId: null, fightId: null, requirementId: null,
+      actorUserId: user.id, action: "event_updated", stateFrom: event.status, stateTo: updated.status,
+      note: updated.name,
+    });
+  }
+  return updated;
 }
 
-export async function listPromoterDashboardEvents(): Promise<DashboardEventSummary[]> {
+export async function deleteEvent(eventId: string, actorUserId?: string) {
+  const event = await getEventById(eventId);
+
+  if (!event) {
+    return false;
+  }
+
+  if (actorUserId) {
+    await auditLogsRepository.create({
+      eventId: event.id, fighterId: null, fightId: null, requirementId: null,
+      actorUserId, action: "event_deleted", stateFrom: event.status, stateTo: "DELETED",
+      note: event.name,
+    });
+  }
+
+  await Promise.all([
+    deleteFightsByEventId(event.id),
+    eventRequirementsRepository.deleteByEventId(event.id),
+    fighterRequirementsRepository.deleteByEventId(event.id),
+    documentSubmissionsRepository.deleteByEventId(event.id),
+    reminderLogsRepository.deleteByEventId(event.id),
+    fighterInvitesRepository.deleteByEventId(event.id),
+    fighterReadinessRepository.deleteByEventId(event.id),
+  ]);
+
+  return eventsRepository.deleteEvent(event.id);
+}
+
+export async function deleteEventForUser(eventId: string, user: AuthUser) {
+  const event = await getEventByIdForUser(eventId, user);
+
+  if (!event) {
+    return false;
+  }
+
+  return deleteEvent(event.id, user.id);
+}
+
+export async function listPromoterDashboardEvents(
+  user: AuthUser,
+): Promise<DashboardEventSummary[]> {
+  const events = await eventsRepository.listEventsByOwnerId(user.id);
+  const activeEventId = findCurrentEventId(events);
+
+  return mapDashboardEventSummaries(events, activeEventId);
+}
+
+export async function listAdminDashboardEvents(): Promise<DashboardEventSummary[]> {
   const events = await eventsRepository.listEvents();
   const activeEventId = findCurrentEventId(events);
 
+  return mapDashboardEventSummaries(events, activeEventId);
+}
+
+async function mapDashboardEventSummaries(
+  events: Awaited<ReturnType<typeof eventsRepository.listEvents>>,
+  activeEventId?: string,
+) {
   return Promise.all(
     events.map(async (event) => {
-      const metrics = await eventsRepository.getEventSummaryMetrics(event.id);
+      const [metrics, requirements] = await Promise.all([
+        eventsRepository.getEventSummaryMetrics(event.id),
+        fighterRequirementsRepository.listByEventId(event.id),
+      ]);
+      const operationalCounts = getRequirementOperationalCounts(requirements);
 
       return {
         id: event.id,
@@ -334,9 +464,9 @@ export async function listPromoterDashboardEvents(): Promise<DashboardEventSumma
         fights: metrics.fights,
         fighters: metrics.fighters,
         status: resolveDashboardEventStatus(event.date, event.id === activeEventId),
-        waitingItems: 0,
-        humanActionItems: 0,
-      };
+        waitingItems: operationalCounts.waiting,
+        humanActionItems: operationalCounts.humanAction,
+      } satisfies DashboardEventSummary;
     }),
   );
 }
@@ -373,8 +503,8 @@ function resolveDashboardEventStatus(
   return isCurrentEvent ? "active" : "upcoming";
 }
 
-export async function getPromoterOverviewStats(): Promise<DashboardOverviewStats> {
-  const events = await listPromoterDashboardEvents();
+export async function getPromoterOverviewStats(user: AuthUser): Promise<DashboardOverviewStats> {
+  const events = await listPromoterDashboardEvents(user);
   const totalFighters = events.reduce((sum, event) => sum + event.fighters, 0);
   const activeEvent = events.find((event) => event.status === "active") ?? events[0];
   const requirementGroups = await Promise.all(
@@ -412,8 +542,9 @@ export async function getPromoterOverviewStats(): Promise<DashboardOverviewStats
 
 export async function getPromoterEventDetailsBySlug(
   slug: string,
+  user: AuthUser,
 ): Promise<DashboardEventDetail | null> {
-  const event = await eventsRepository.findEventBySlug(slug);
+  const event = await getEventBySlugForUser(slug, user);
 
   if (!event) {
     return null;
@@ -468,6 +599,7 @@ export async function getPromoterEventDetailsBySlug(
     readinessItems.length - fighterReadyCount - fighterHumanActionCount,
     0,
   );
+  const operationalCounts = getRequirementOperationalCounts(fighterRequirements);
   const aiOperations = buildEventAiOperations({
     eventName: event.name,
     readinessItems,
@@ -487,8 +619,8 @@ export async function getPromoterEventDetailsBySlug(
     fights: metrics.fights,
     fighters: metrics.fighters,
     status: event.status === "completed" ? "active" : event.status,
-    waitingItems: 0,
-    humanActionItems: 0,
+    waitingItems: operationalCounts.waiting,
+    humanActionItems: operationalCounts.humanAction,
     tabs: defaultTabs,
     readiness: {
       fights: {
@@ -513,7 +645,9 @@ export async function getPromoterEventDetailsBySlug(
         id: fight.id,
         label: `Bout ${String(fight.order).padStart(2, "0")}`,
         order: String(fight.order).padStart(2, "0"),
+        cardGroup: fight.cardGroup,
         division: fight.division,
+        catchweightKg: fight.catchweightKg,
         readinessPercent: Math.round(
           ((readinessA?.readinessPercentage ?? 0) +
             (readinessB?.readinessPercentage ?? 0)) /
@@ -528,8 +662,9 @@ export async function getPromoterEventDetailsBySlug(
 
 export async function getPromoterEventFighterListBySlug(
   slug: string,
+  user: AuthUser,
 ): Promise<PromoterEventFighterListData | null> {
-  const event = await eventsRepository.findEventBySlug(slug);
+  const event = await getEventBySlugForUser(slug, user);
 
   if (!event) {
     return null;
@@ -665,8 +800,9 @@ export async function getPromoterEventFighterListBySlug(
 export async function getPromoterEventFighterDetailBySlugAndId(
   slug: string,
   fighterId: string,
+  user: AuthUser,
 ): Promise<PromoterEventFighterDetailData | null> {
-  const event = await eventsRepository.findEventBySlug(slug);
+  const event = await getEventBySlugForUser(slug, user);
   const fighter = await fightersRepository.findFighterById(fighterId);
 
   if (!event || !fighter) {
@@ -787,6 +923,9 @@ export async function getPromoterEventFighterDetailBySlugAndId(
           "Complete this requirement to keep fighter readiness moving.",
         fileName: submission?.originalFileName ?? null,
         submittedAt: submission ? formatDateTimeLabel(submission.createdAt) : null,
+        submissionId: submission?.id ?? null,
+        submissionStatus: submission?.status ?? null,
+        fileUrl: submission?.publicUrl ?? null,
         reviewNote: submission?.reviewNote ?? null,
       };
     }),
@@ -803,8 +942,9 @@ export async function getPromoterEventFighterDetailBySlugAndId(
 export async function getPromoterFightDetailBySlugAndId(
   eventSlug: string,
   fightId: string,
+  user: AuthUser,
 ): Promise<PromoterFightDetailData | null> {
-  const event = await eventsRepository.findEventBySlug(eventSlug);
+  const event = await getEventBySlugForUser(eventSlug, user);
   const fight = await getFightById(fightId);
 
   if (!event || !fight || fight.eventId !== event.id) {
@@ -849,7 +989,9 @@ export async function getPromoterFightDetailBySlugAndId(
     id: fight.id,
     label: `Bout ${String(fight.order).padStart(2, "0")}`,
     order: String(fight.order).padStart(2, "0"),
+    cardGroup: fight.cardGroup,
     division: fight.division,
+    catchweightKg: fight.catchweightKg,
     readinessPercent: Math.round(
       ((leftReadiness?.readinessPercentage ?? 0) +
         (rightReadiness?.readinessPercentage ?? 0)) / 2,
@@ -981,13 +1123,14 @@ function formatDateOnly(isoDate: string) {
 
 function mapDashboardFighter(
   fighter:
-    | {
+      | {
         fullName: string;
         nationality: string | null;
         stance: string | null;
         division: string | null;
         managerName: string | null;
         managerEmail: string | null;
+        photoUrl: string | null;
       }
     | null
     | undefined,
@@ -1021,6 +1164,7 @@ function mapDashboardFighter(
     division: fighter?.division ?? division,
     country: fighter?.nationality ?? "TBD",
     stance: fighter?.stance ?? "TBD",
+    photoUrl: fighter?.photoUrl ?? null,
     readinessLabel,
     readinessPercent: readiness?.readinessPercentage ?? 0,
     managerName: fighter?.managerName ?? undefined,
@@ -1220,13 +1364,20 @@ function buildEventAiOperations(params: {
             0,
           ) / params.readinessItems.length,
         );
-  const nextPendingReminder =
-    params.reminderLogs
-      .filter((reminder) => reminder.status === "PENDING")
+  const eventRequirementMap = new Map(
+    params.eventRequirements.map((requirement) => [requirement.id, requirement]),
+  );
+  const nextPendingRequirement =
+    params.fighterRequirements
+      .filter(
+        (requirement) =>
+          ["WAITING", "NEEDS_RESUBMISSION"].includes(requirement.status) &&
+          requirement.nextReminderAt,
+      )
       .sort(
         (left, right) =>
-          new Date(left.scheduledFor).getTime() -
-          new Date(right.scheduledFor).getTime(),
+          new Date(left.nextReminderAt as string).getTime() -
+          new Date(right.nextReminderAt as string).getTime(),
       )[0] ?? null;
 
   return {
@@ -1235,8 +1386,8 @@ function buildEventAiOperations(params: {
     activelyHandling,
     monitoredDeadlines,
     escalatedIssues,
-    nextFollowUp: nextPendingReminder
-      ? `${nextPendingReminder.requirementName} reminder scheduled for ${formatDateOnly(nextPendingReminder.scheduledFor)}`
+    nextFollowUp: nextPendingRequirement
+      ? `${eventRequirementMap.get(nextPendingRequirement.eventRequirementId)?.name ?? "Requirement"} reminder scheduled for ${formatDateOnly(nextPendingRequirement.nextReminderAt as string)}`
       : "No automated follow-ups are currently queued.",
     recentActivity: buildEventRecentActivity({
       documentSubmissions: params.documentSubmissions,
@@ -1350,8 +1501,8 @@ function isPastDueRequirement(requirement: FighterRequirementRecord) {
   return (
     Boolean(requirement.dueDate) &&
     !["ACCEPTED", "NOT_APPLICABLE"].includes(requirement.status) &&
-    startOfDayIso(requirement.dueDate ?? CURRENT_LOCAL_DATE) <
-      startOfDayIso(CURRENT_LOCAL_DATE)
+    startOfDayIso(requirement.dueDate ?? new Date().toISOString()) <
+      todayStartOfDayIso()
   );
 }
 
@@ -1541,8 +1692,8 @@ function buildPromoterFighterOverview(params: {
   const isContractOverdue =
     Boolean(params.signedAgreementRequirement?.dueDate) &&
     !["ACCEPTED", "NOT_APPLICABLE"].includes(params.requirement?.status ?? "WAITING") &&
-    startOfDayIso(params.signedAgreementRequirement?.dueDate ?? CURRENT_LOCAL_DATE) <
-      startOfDayIso(CURRENT_LOCAL_DATE);
+    startOfDayIso(params.signedAgreementRequirement?.dueDate ?? new Date().toISOString()) <
+      todayStartOfDayIso();
   const actions: Array<"reinvite" | "replace"> =
     params.fighter?.inviteStatus === "accepted" && !isContractOverdue
       ? ["replace"]
@@ -1723,6 +1874,23 @@ function formatDateTimeLabel(isoDate: string) {
 function startOfDayIso(isoDate: string) {
   const date = new Date(isoDate);
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function todayStartOfDayIso() {
+  return startOfDayIso(new Date().toISOString());
+}
+
+function getRequirementOperationalCounts(requirements: FighterRequirementRecord[]) {
+  return {
+    waiting: requirements.filter((requirement) =>
+      ["WAITING", "PROCESSING", "RECEIVED", "NEEDS_RESUBMISSION"].includes(
+        requirement.status,
+      ),
+    ).length,
+    humanAction: requirements.filter(
+      (requirement) => requirement.status === "HUMAN_ACTION",
+    ).length,
+  };
 }
 
 function resolveEventStatus(date: string): NonNullable<CreateEventInput["status"]> {

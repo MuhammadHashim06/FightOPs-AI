@@ -26,6 +26,13 @@ const reminderLogSchema = new Schema(
       required: true,
       index: true,
     },
+    kind: {
+      type: String,
+      enum: ["fighter_reminder", "deadline_alert"],
+      default: "fighter_reminder",
+      required: true,
+      index: true,
+    },
     recipientName: {
       type: String,
       required: true,
@@ -77,6 +84,21 @@ const reminderLogSchema = new Schema(
       type: Date,
       default: null,
     },
+    attemptCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastError: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    nextAttemptAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -84,7 +106,7 @@ const reminderLogSchema = new Schema(
 );
 
 reminderLogSchema.index(
-  { eventId: 1, fighterId: 1, eventRequirementId: 1, scheduledFor: 1 },
+  { eventId: 1, fighterId: 1, eventRequirementId: 1, kind: 1, scheduledFor: 1 },
   { unique: true },
 );
 

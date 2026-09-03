@@ -15,23 +15,81 @@ import {
   createFight as createFightRecord,
   deleteFight as deleteFightRecord,
   getAllFights,
+  getFightByEventAndFighterId,
+  getFightsByEventId,
   getFightById,
   getNextFightOrder,
+  reorderFights,
   updateFight as updateFightRecord,
 } from "@/server/repositories/fights.repository";
 import { reminderLogsRepository } from "@/server/repositories/reminder-logs.repository";
-import { getEventById } from "@/server/services/events.service";
+import { auditLogsRepository } from "@/server/repositories/audit-logs.repository";
+import {
+  getEventById,
+  getEventByIdForUser,
+  listEventsForUser,
+} from "@/server/services/events.service";
 import { issueFighterInvite } from "@/server/services/fighter-invites.service";
 import { buildDueDateByRequirementId } from "@/server/services/requirement-schedule.service";
-import { syncEventReminderQueue } from "@/server/services/reminders.service";
+import { refreshFighterReminderSchedules } from "@/server/services/reminders.service";
 import { recalculateFighterReadiness } from "@/server/services/readiness.service";
 
 export async function listFights() {
   return getAllFights();
 }
 
+export async function listFightsForUser(user: AuthUser) {
+  if (user.role === "admin") {
+    return listFights();
+  }
+
+  if (user.role !== "promoter") {
+    return [];
+  }
+
+  const events = await listEventsForUser(user);
+  const fights = await Promise.all(events.map((event) => getFightsByEventId(event.id)));
+  return fights.flat();
+}
+
 export async function findFightById(fightId: string) {
   return getFightById(fightId);
+}
+
+export async function findFightByIdForUser(fightId: string, user: AuthUser) {
+  const fight = await getFightById(fightId);
+
+  if (!fight || !(await getEventByIdForUser(fight.eventId, user))) {
+    return null;
+  }
+
+  return fight;
+}
+
+export async function reorderFightsForEvent(
+  eventId: string,
+  fightIds: string[],
+  user: AuthUser,
+) {
+  const event = await getEventByIdForUser(eventId, user);
+
+  if (!event) {
+    throw new Error("Event was not found.");
+  }
+
+  const fights = await getFightsByEventId(eventId);
+  const existingFightIds = new Set(fights.map((fight) => fight.id));
+  const submittedFightIds = new Set(fightIds);
+
+  if (
+    fightIds.length !== fights.length ||
+    submittedFightIds.size !== fightIds.length ||
+    fightIds.some((fightId) => !existingFightIds.has(fightId))
+  ) {
+    throw new Error("Fight order must include every fight in this event exactly once.");
+  }
+
+  return reorderFights(eventId, fightIds);
 }
 
 export async function createFightForEvent(
@@ -48,21 +106,28 @@ export async function createFightForEvent(
   const normalizedInput = normalizeCreateFightInput(input);
 
   validateCreateFightInput(normalizedInput);
+  assertDistinctContactEmails(normalizedInput);
 
-  const [fighterA, fighterB] = await Promise.all([
-    normalizedInput.fighterA
-      ? fightersRepository.createFighter(normalizedInput.fighterA)
-      : Promise.resolve(null),
-    normalizedInput.fighterB
-      ? fightersRepository.createFighter(normalizedInput.fighterB)
-      : Promise.resolve(null),
-  ]);
+  const fighterA = normalizedInput.fighterA
+    ? await resolveFighterForAssignment({
+        input: normalizedInput.fighterA,
+        eventId,
+      })
+    : null;
+  const fighterB = normalizedInput.fighterB
+    ? await resolveFighterForAssignment({
+        input: normalizedInput.fighterB,
+        eventId,
+      })
+    : null;
   const order = await getNextFightOrder(eventId);
 
   const fight = await createFightRecord({
     eventId,
     order,
+    cardGroup: normalizedInput.cardGroup ?? "main_card",
     division: normalizedInput.division.trim(),
+    catchweightKg: normalizedInput.catchweightKg ?? null,
     fighterAId: fighterA?.id ?? null,
     fighterBId: fighterB?.id ?? null,
   });
@@ -95,7 +160,11 @@ export async function createFightForEvent(
         recalculateFighterReadiness({ eventId, fighterId: fighter.id }),
       ),
   );
-  await syncEventReminderQueue(eventId);
+  await Promise.all(
+    [fighterA, fighterB]
+      .filter((fighter): fighter is NonNullable<typeof fighter> => Boolean(fighter))
+      .map((fighter) => refreshFighterReminderSchedules(eventId, fighter.id)),
+  );
 
   const [fighterAInvite, fighterBInvite] = await Promise.all([
     fighterA
@@ -115,6 +184,12 @@ export async function createFightForEvent(
         })
       : Promise.resolve(null),
   ]);
+
+  await auditLogsRepository.create({
+    eventId, fighterId: null, fightId: fight.id, requirementId: null,
+    actorUserId: invitedBy.id, action: "fight_created", stateFrom: "NONE", stateTo: fight.status,
+    note: `${fight.division} fight card created`,
+  });
 
   return {
     fight,
@@ -149,6 +224,7 @@ export async function updateFightById(
   const normalizedInput = normalizeCreateFightInput(input);
 
   validateCreateFightInput(normalizedInput);
+  assertDistinctContactEmails(normalizedInput);
 
   const eventRequirements = await eventRequirementsRepository.listByEventId(event.id);
 
@@ -173,9 +249,15 @@ export async function updateFightById(
     invitedBy,
   });
 
+  if (fighterA?.id && fighterA.id === fighterB?.id) {
+    throw new Error("Fighter A and Fighter B must be different fighters.");
+  }
+
   const updatedFight = await updateFightRecord({
     fightId,
+    cardGroup: normalizedInput.cardGroup ?? fight.cardGroup,
     division: normalizedInput.division.trim(),
+    catchweightKg: normalizedInput.catchweightKg ?? null,
     fighterAId: fighterA?.id ?? fight.fighterAId,
     fighterBId: fighterB?.id ?? fight.fighterBId,
   });
@@ -184,17 +266,27 @@ export async function updateFightById(
     throw new Error("Fight was not found.");
   }
 
+  await auditLogsRepository.create({
+    eventId: event.id, fighterId: null, fightId: updatedFight.id, requirementId: null,
+    actorUserId: invitedBy.id, action: "fight_updated", stateFrom: fight.status, stateTo: updatedFight.status,
+    note: `${updatedFight.division} fight card updated`,
+  });
+
   await Promise.all(
     [updatedFight.fighterAId, updatedFight.fighterBId]
       .filter((fighterId): fighterId is string => Boolean(fighterId))
       .map((fighterId) => recalculateFighterReadiness({ eventId: event.id, fighterId })),
   );
-  await syncEventReminderQueue(event.id);
+  await Promise.all(
+    [updatedFight.fighterAId, updatedFight.fighterBId]
+      .filter((fighterId): fighterId is string => Boolean(fighterId))
+      .map((fighterId) => refreshFighterReminderSchedules(event.id, fighterId)),
+  );
 
   return updatedFight;
 }
 
-export async function deleteFightById(fightId: string) {
+export async function deleteFightById(fightId: string, actorUserId: string) {
   const fight = await getFightById(fightId);
 
   if (!fight) {
@@ -214,7 +306,11 @@ export async function deleteFightById(fightId: string) {
     throw new Error("Fight was not found.");
   }
 
-  await syncEventReminderQueue(fight.eventId);
+  await auditLogsRepository.create({
+    eventId: fight.eventId, fighterId: null, fightId: fight.id, requirementId: null,
+    actorUserId, action: "fight_deleted", stateFrom: fight.status, stateTo: "DELETED",
+    note: `${fight.division} fight card deleted`,
+  });
 
   return deletedFight;
 }
@@ -258,12 +354,7 @@ export async function saveFightSideById(params: {
       throw new Error("Fighter was not found.");
     }
 
-    const normalizedExistingEmail = existingFighter.managerEmail?.trim().toLowerCase() ?? "";
-    const normalizedInputEmail = params.fighter.managerEmail.trim().toLowerCase();
-
-    if (normalizedExistingEmail !== normalizedInputEmail) {
-      throw new Error("Contact email cannot be changed. Remove and add the fighter again.");
-    }
+    assertContactEmailUnchanged(existingFighter.managerEmail, params.fighter.managerEmail);
 
     const updatedFighter = await fightersRepository.updateFighter({
       ...existingFighter,
@@ -286,7 +377,7 @@ export async function saveFightSideById(params: {
       eventId: event.id,
       fighterId: updatedFighter.id,
     });
-    await syncEventReminderQueue(event.id);
+    await refreshFighterReminderSchedules(event.id, updatedFighter.id);
 
     return {
       fight,
@@ -294,9 +385,18 @@ export async function saveFightSideById(params: {
     };
   }
 
-  const createdFighter = await fightersRepository.createFighter(params.fighter);
+  const fighter = await resolveFighterForAssignment({
+    input: params.fighter,
+    eventId: event.id,
+    excludeFightId: fight.id,
+  });
+
+  if (fighter.id === getFightSideFighterId(fight, otherFightSide(params.side))) {
+    throw new Error("This fighter is already assigned to the other side of this fight.");
+  }
+
   const updatedFight = await updateFightRecord(
-    setFightSideFighterId(fight, params.side, createdFighter.id),
+    setFightSideFighterId(fight, params.side, fighter.id),
   );
 
   if (!updatedFight) {
@@ -305,27 +405,27 @@ export async function saveFightSideById(params: {
 
   await fighterRequirementsRepository.ensureForFighter({
     eventId: event.id,
-    fighterId: createdFighter.id,
+    fighterId: fighter.id,
     fightId: fight.id,
     eventRequirements,
     dueDateByRequirementId,
   });
   await recalculateFighterReadiness({
     eventId: event.id,
-    fighterId: createdFighter.id,
+    fighterId: fighter.id,
   });
 
   await issueFighterInvite({
-    fighter: createdFighter,
+    fighter,
     eventId: event.id,
     fightId: fight.id,
     invitedBy: params.invitedBy,
   });
-  await syncEventReminderQueue(event.id);
+  await refreshFighterReminderSchedules(event.id, fighter.id);
 
   return {
     fight: updatedFight,
-    fighter: createdFighter,
+    fighter,
   };
 }
 
@@ -359,8 +459,6 @@ export async function removeFightSideById(params: {
   if (!updatedFight) {
     throw new Error("Fight was not found.");
   }
-
-  await syncEventReminderQueue(fight.eventId);
 
   return updatedFight;
 }
@@ -396,7 +494,83 @@ export async function reinviteFightSideById(params: {
   });
 }
 
+async function resolveFighterForAssignment(params: {
+  input: CreateFighterInput;
+  eventId: string;
+  excludeFightId?: string;
+}) {
+  const normalizedEmail = params.input.managerEmail.trim().toLowerCase();
+  const existingFighter = await fightersRepository.findFighterByContactEmail(
+    normalizedEmail,
+  );
+
+  if (existingFighter) {
+    const linkedFight = await getFightByEventAndFighterId(
+      params.eventId,
+      existingFighter.id,
+      params.excludeFightId,
+    );
+
+    if (linkedFight) {
+      throw new Error(
+        `${existingFighter.fullName} is already assigned to another fight in this event.`,
+      );
+    }
+
+    return fightersRepository.updateFighter({
+      ...existingFighter,
+      fullName: params.input.fullName.trim(),
+      division: params.input.division?.trim() || existingFighter.division,
+      managerName: params.input.managerName.trim(),
+      managerEmail: normalizedEmail,
+      managerPhone: params.input.managerPhone?.trim() || existingFighter.managerPhone,
+      contractReference:
+        params.input.contractReference?.trim() || existingFighter.contractReference,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return fightersRepository.createFighter({
+    fullName: params.input.fullName.trim(),
+    division: params.input.division?.trim(),
+    managerName: params.input.managerName.trim(),
+    managerEmail: normalizedEmail,
+    managerPhone: params.input.managerPhone?.trim(),
+    contractReference: params.input.contractReference?.trim(),
+  });
+}
+
+function assertDistinctContactEmails(input: CreateFightInput) {
+  const emails = [input.fighterA, input.fighterB]
+    .filter((fighter): fighter is CreateFighterInput => Boolean(fighter))
+    .map((fighter) => fighter.managerEmail.trim().toLowerCase());
+
+  if (new Set(emails).size !== emails.length) {
+    throw new Error("Fighter A and Fighter B must have different contact emails.");
+  }
+}
+
+function assertContactEmailUnchanged(
+  existingEmail: string | null,
+  inputEmail: string,
+) {
+  const normalizedExistingEmail = existingEmail?.trim().toLowerCase() ?? "";
+  const normalizedInputEmail = inputEmail.trim().toLowerCase();
+
+  if (normalizedExistingEmail !== normalizedInputEmail) {
+    throw new Error("Contact email cannot be changed. Remove and add the fighter again.");
+  }
+}
+
 function validateCreateFightInput(input: CreateFightInput) {
+  if (!input.cardGroup?.trim()) {
+    throw new Error("Fight card group is invalid.");
+  }
+
+  if (input.division === "Catchweight" && (!input.catchweightKg || input.catchweightKg <= 0)) {
+    throw new Error("A custom catchweight in kilograms is required.");
+  }
+
   if (!input.division.trim()) {
     throw new Error("Fight division is required.");
   }
@@ -422,7 +596,9 @@ function validateCreateFightInput(input: CreateFightInput) {
 
 function normalizeCreateFightInput(input: CreateFightInput): CreateFightInput {
   return {
+    cardGroup: input.cardGroup ?? "main_card",
     division: input.division,
+    catchweightKg: input.catchweightKg ?? null,
     fighterA: normalizeFightSideInput(input.fighterA),
     fighterB: normalizeFightSideInput(input.fighterB),
   };
@@ -479,19 +655,25 @@ async function upsertFightSide(params: {
       throw new Error("Fighter was not found.");
     }
 
+    assertContactEmailUnchanged(existingFighter.managerEmail, params.fighterInput.managerEmail);
+
     return fightersRepository.updateFighter({
       ...existingFighter,
       fullName: params.fighterInput.fullName.trim(),
       division: params.fighterInput.division?.trim() || null,
       managerName: params.fighterInput.managerName.trim(),
-      managerEmail: params.fighterInput.managerEmail.trim().toLowerCase(),
+      managerEmail: existingFighter.managerEmail,
       managerPhone: params.fighterInput.managerPhone?.trim() || null,
       contractReference: params.fighterInput.contractReference?.trim() || null,
       updatedAt: new Date().toISOString(),
     });
   }
 
-  const fighter = await fightersRepository.createFighter(params.fighterInput);
+  const fighter = await resolveFighterForAssignment({
+    input: params.fighterInput,
+    eventId: params.eventId,
+    excludeFightId: params.fightId,
+  });
   const dueDateByRequirementId = buildDueDateByRequirementId({
     event: params.event,
     fight: params.fight,
@@ -526,6 +708,10 @@ function getFightSideFighterId(
   return side === "fighterA" ? fight.fighterAId : fight.fighterBId;
 }
 
+function otherFightSide(side: "fighterA" | "fighterB") {
+  return side === "fighterA" ? "fighterB" : "fighterA";
+}
+
 function setFightSideFighterId(
   fight: FightRecord,
   side: "fighterA" | "fighterB",
@@ -533,7 +719,9 @@ function setFightSideFighterId(
 ) {
   return {
     fightId: fight.id,
+    cardGroup: fight.cardGroup,
     division: fight.division,
+    catchweightKg: fight.catchweightKg,
     fighterAId: side === "fighterA" ? fighterId : fight.fighterAId,
     fighterBId: side === "fighterB" ? fighterId : fight.fighterBId,
   };

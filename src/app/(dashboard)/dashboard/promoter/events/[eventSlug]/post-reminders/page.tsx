@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
 import { EventRemindersPage } from "@/features/dashboard/components/event-reminders-page";
-import { getEventBySlug } from "@/server/services/events.service";
+import { getEventBySlugForUser } from "@/server/services/events.service";
 import { listEventReminders } from "@/server/services/reminders.service";
+import { getAuthenticatedUser } from "@/server/services/session.service";
 
 type EventRemindersRouteProps = {
   params: Promise<{
@@ -14,7 +15,8 @@ export default async function EventRemindersRoute({
   params,
 }: EventRemindersRouteProps) {
   const { eventSlug } = await params;
-  const event = await getEventBySlug(eventSlug);
+  const user = await getAuthenticatedUser();
+  const event = user ? await getEventBySlugForUser(eventSlug, user) : null;
 
   if (!event) {
     notFound();

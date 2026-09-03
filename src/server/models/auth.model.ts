@@ -50,6 +50,12 @@ const userSchema = new Schema(
         required: true,
         trim: true,
       },
+      phone: {
+        type: String,
+        default: null,
+        trim: true,
+        maxlength: 40,
+      },
     },
     lastLoginAt: {
       type: Date,

@@ -7,6 +7,8 @@ export async function GET() {
     basePath: API_PREFIX,
     resources: [
       `${API_PREFIX}/health`,
+      `${API_PREFIX}/jobs/reminders`,
+      `${API_PREFIX}/human-action/[caseId]/decision`,
       `${API_PREFIX}/events`,
       `${API_PREFIX}/events/[eventId]`,
       `${API_PREFIX}/events/[eventId]/requirements`,

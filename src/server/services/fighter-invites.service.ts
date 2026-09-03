@@ -7,6 +7,7 @@ import { eventRequirementsRepository } from "@/server/repositories/event-require
 import { fighterInvitesRepository } from "@/server/repositories/fighter-invites.repository";
 import { fightersRepository } from "@/server/repositories/fighters.repository";
 import { fighterRequirementsRepository } from "@/server/repositories/fighter-requirements.repository";
+import { auditLogsRepository } from "@/server/repositories/audit-logs.repository";
 import { getFightById } from "@/server/repositories/fights.repository";
 import { hashPassword } from "@/server/security/password";
 import {
@@ -16,7 +17,7 @@ import {
 import { getEventById } from "@/server/services/events.service";
 import { sendFighterInviteEmail } from "@/server/services/email.service";
 import { buildDueDateByRequirementId } from "@/server/services/requirement-schedule.service";
-import { syncEventReminderQueue } from "@/server/services/reminders.service";
+import { refreshFighterReminderSchedules } from "@/server/services/reminders.service";
 import { validateAcceptFighterInviteInput } from "@/server/validators/auth.validator";
 import type {
   AcceptFighterInviteInput,
@@ -85,6 +86,10 @@ export async function issueFighterInvite(input: IssueFighterInviteInput) {
 
   const rawToken = randomUUID();
   const now = new Date().toISOString();
+  await fighterInvitesRepository.consumePendingByFightAndFighter(
+    input.fightId,
+    input.fighter.id,
+  );
   const inviteToken = await fighterInvitesRepository.createInviteToken(
     createInviteTokenRecord({
       fighterId: input.fighter.id,
@@ -245,6 +250,13 @@ export async function acceptFighterInvite(
     fightId: activeInviteToken.fightId,
   });
 
+  await auditLogsRepository.create({
+    eventId: activeInviteToken.eventId, fighterId: acceptedFighter.id,
+    fightId: activeInviteToken.fightId, requirementId: null, actorUserId: user.id,
+    action: "invite_accepted", stateFrom: "PENDING", stateTo: "ACCEPTED",
+    note: "Fighter accepted the event invitation.",
+  });
+
   const sessionToken = createSessionToken();
   await authRepository.createSession({
     userId: user.id,
@@ -288,7 +300,7 @@ async function refreshAcceptedInviteRequirementSchedule(params: {
       eventRequirements,
     }),
   });
-  await syncEventReminderQueue(params.eventId);
+  await refreshFighterReminderSchedules(params.eventId, params.fighter.id);
 }
 
 function createInviteTokenRecord(input: {

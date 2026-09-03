@@ -61,6 +61,12 @@ export const fighterReadinessRepository = {
     const result = await FighterEventReadinessMongoModel.deleteMany({ fightId });
     return result.deletedCount ?? 0;
   },
+  async deleteByEventId(eventId: string) {
+    await connectToDatabase();
+
+    const result = await FighterEventReadinessMongoModel.deleteMany({ eventId });
+    return result.deletedCount ?? 0;
+  },
   async deleteByEventAndFighter(eventId: string, fighterId: string) {
     await connectToDatabase();
 

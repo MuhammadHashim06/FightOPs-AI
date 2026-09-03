@@ -5,13 +5,17 @@ export function FightHeroCard({
 }: {
   bout: DashboardEventDetail["bouts"][number];
 }) {
+  const divisionLabel = bout.catchweightKg
+    ? `${bout.division} (${bout.catchweightKg} kg)`
+    : bout.division;
+
   return (
     <section className="overflow-hidden rounded-[18px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
       <div className="flex flex-col gap-3 border-b border-border-subtle px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <span className="h-2.5 w-2.5 rounded-full bg-success" />
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-text-body">
-            {bout.label} {bout.division}
+            {bout.label} {divisionLabel}
           </p>
         </div>
 

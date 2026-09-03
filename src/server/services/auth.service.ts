@@ -16,20 +16,24 @@ import {
 } from "@/server/services/email.service";
 import {
   validateForgotPasswordInput,
+  validateChangePasswordInput,
   validateLoginInput,
   validateResendVerificationInput,
   validateRegisterInput,
   validateResetPasswordInput,
   validateVerifyEmailInput,
+  validateUpdateProfileInput,
 } from "@/server/validators/auth.validator";
 import type {
   AuthUser,
+  ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
   ResendVerificationInput,
   RegisterInput,
   ResetPasswordInput,
   VerifyEmailInput,
+  UpdateProfileInput,
 } from "@/types/auth";
 
 type LoginContext = {
@@ -60,6 +64,7 @@ export async function registerUser(input: RegisterInput) {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       displayName: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
+      phone: null,
     },
     createdAt: now,
     updatedAt: now,
@@ -257,6 +262,46 @@ export async function resetPassword(input: ResetPasswordInput) {
   };
 }
 
+export async function updateUserProfile(userId: string, input: UpdateProfileInput) {
+  validateUpdateProfileInput(input);
+
+  const user = await authRepository.findUserById(userId);
+
+  if (!user) {
+    throw new Error("User account was not found.");
+  }
+
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+
+  return authRepository.updateUser({
+    ...user,
+    profile: {
+      firstName,
+      lastName,
+      displayName: `${firstName} ${lastName}`.trim(),
+      phone: normalizeOptionalText(input.phone),
+    },
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function changeUserPassword(userId: string, input: ChangePasswordInput) {
+  validateChangePasswordInput(input);
+
+  const user = await authRepository.findUserById(userId);
+
+  if (!user || !verifyPassword(input.currentPassword, user.passwordHash)) {
+    throw new Error("Current password is incorrect.");
+  }
+
+  return authRepository.updateUser({
+    ...user,
+    passwordHash: hashPassword(input.newPassword),
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export async function verifyEmail(input: VerifyEmailInput) {
   validateVerifyEmailInput(input);
 
@@ -310,4 +355,9 @@ function addMinutes(isoDate: string, minutes: number) {
 
 function addDays(isoDate: string, days: number) {
   return new Date(new Date(isoDate).getTime() + days * 24 * 60 * 60_000).toISOString();
+}
+
+function normalizeOptionalText(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }

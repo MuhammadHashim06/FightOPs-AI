@@ -9,10 +9,28 @@ type EventSummaryMetrics = {
 };
 
 export const eventsRepository = {
+  async listEventsByIds(eventIds: string[]) {
+    await connectToDatabase();
+
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const events = await EventMongoModel.find({ _id: { $in: eventIds } }).lean();
+    return events.map(mapEvent);
+  },
   async listEvents() {
     await connectToDatabase();
 
     const events = await EventMongoModel.find().sort({ date: 1, createdAt: -1 }).lean();
+    return events.map(mapEvent);
+  },
+  async listEventsByOwnerId(ownerUserId: string) {
+    await connectToDatabase();
+
+    const events = await EventMongoModel.find({ createdByUserId: ownerUserId })
+      .sort({ date: 1, createdAt: -1 })
+      .lean();
     return events.map(mapEvent);
   },
   async findEventById(eventId: string) {
@@ -21,10 +39,28 @@ export const eventsRepository = {
     const event = await EventMongoModel.findById(eventId).lean();
     return event ? mapEvent(event) : null;
   },
+  async findEventByIdAndOwner(eventId: string, ownerUserId: string) {
+    await connectToDatabase();
+
+    const event = await EventMongoModel.findOne({
+      _id: eventId,
+      createdByUserId: ownerUserId,
+    }).lean();
+    return event ? mapEvent(event) : null;
+  },
   async findEventBySlug(slug: string) {
     await connectToDatabase();
 
     const event = await EventMongoModel.findOne({ slug }).lean();
+    return event ? mapEvent(event) : null;
+  },
+  async findEventBySlugAndOwner(slug: string, ownerUserId: string) {
+    await connectToDatabase();
+
+    const event = await EventMongoModel.findOne({
+      slug,
+      createdByUserId: ownerUserId,
+    }).lean();
     return event ? mapEvent(event) : null;
   },
   async createEvent(input: CreateEventInput & { createdByUserId: string; slug: string }) {

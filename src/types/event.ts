@@ -1,5 +1,20 @@
 export type EventStatus = "draft" | "upcoming" | "active" | "completed";
 
+export type FightCardGroup = string;
+
+export type FightCardOptionKind = "group" | "weight_class";
+
+export type FightCardOptionRecord = {
+  id: string;
+  kind: FightCardOptionKind;
+  key: string;
+  label: string;
+  weightLimitKg: number | null;
+  weightLimitLb: number | null;
+  allowsCustomWeight: boolean;
+  sortOrder: number;
+};
+
 export type EventRecord = {
   id: string;
   slug: string;
@@ -47,7 +62,9 @@ export type FightRecord = {
   id: string;
   eventId: string;
   order: number;
+  cardGroup: FightCardGroup;
   division: string;
+  catchweightKg: number | null;
   fighterAId: string | null;
   fighterBId: string | null;
   status: "READY" | "WAITING" | "HUMAN_ACTION" | "PROCESSING";
@@ -67,7 +84,9 @@ export type CreateFighterInput = {
 };
 
 export type CreateFightInput = {
+  cardGroup?: FightCardGroup;
   division: string;
+  catchweightKg?: number | null;
   fighterA: CreateFighterInput | null;
   fighterB: CreateFighterInput | null;
 };

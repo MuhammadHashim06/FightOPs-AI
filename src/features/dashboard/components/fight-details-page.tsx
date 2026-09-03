@@ -52,22 +52,6 @@ export function FightDetailsPage({
             </span>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-8 border-b border-border-subtle">
-            {["Requirements", "Documents", "AI Activity", "Details"].map((tab, index) => (
-              <button
-                key={tab}
-                type="button"
-                className={`border-b-2 px-3 pb-3 text-[15px] font-medium transition ${
-                  index === 0
-                    ? "border-brand text-brand"
-                    : "border-transparent text-text-body hover:text-text-strong"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
           <div className="mt-5 overflow-hidden rounded-[18px] border border-border-subtle">
             <div className="grid grid-cols-[1.3fr_1fr_1fr] border-b border-border-subtle bg-panel-muted/80 text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
               <div className="border-r border-border-subtle px-4 py-4">Requirement</div>
@@ -160,13 +144,6 @@ export function FightDetailsPage({
               </div>
             </div>
 
-            <button
-              type="button"
-              className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              <span>View AI Activity</span>
-              <ArrowRightIcon className="h-4 w-4" />
-            </button>
           </section>
         </aside>
       </div>
@@ -292,15 +269,6 @@ function ArrowLeftIcon({ className }: { className?: string }) {
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="m15 18-6-6 6-6" />
       <path d="M9 12h11" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
     </svg>
   );
 }

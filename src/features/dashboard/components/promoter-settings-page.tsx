@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useToast } from "@/providers/toast-provider";
@@ -12,36 +13,6 @@ import type {
   RequirementReminderCadence,
   RequirementTemplateRecord,
 } from "@/types/readiness";
-
-const notificationDefaults = [
-  {
-    key: "missing-docs",
-    title: "Missing document alerts",
-    description: "Notify when a fighter's required document is overdue.",
-  },
-  {
-    key: "human-action",
-    title: "Human Action alerts",
-    description: "Notify when a case is escalated for human review.",
-  },
-  {
-    key: "event-reminders",
-    title: "Event reminders",
-    description: "Reminders for upcoming event deadlines.",
-  },
-  {
-    key: "email-notifications",
-    title: "Email notifications",
-    description: "Send all alerts to your contact email.",
-  },
-];
-
-const reviewTypes = [
-  "Signed Contracts",
-  "Medical Clearance",
-  "Insurance Certificates",
-  "Passports / ID",
-];
 
 const templateCategories = [
   "Legal",
@@ -104,33 +75,106 @@ export function PromoterSettingsPage({
   initialTemplates: RequirementTemplateRecord[];
 }) {
   const { showToast } = useToast();
+  const router = useRouter();
   const [templateState, setTemplateState] = useState(initialTemplates);
   const [isSubmittingTemplate, setIsSubmittingTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Record<string, boolean>>({
-    "missing-docs": true,
-    "human-action": true,
-    "event-reminders": true,
-    "email-notifications": true,
+  const [profile, setProfile] = useState({
+    firstName: user.profile.firstName,
+    lastName: user.profile.lastName,
+    phone: user.profile.phone ?? "",
   });
-  const [aiVerificationEnabled, setAiVerificationEnabled] = useState(true);
-  const [reviewSelections, setReviewSelections] = useState<string[]>([
-    "Signed Contracts",
-    "Medical Clearance",
-  ]);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  const displayName =
-    user.profile.displayName || `${user.profile.firstName} ${user.profile.lastName}`;
   const editingTemplate =
     templateState.find((template) => template.id === editingTemplateId) ?? null;
 
-  function handleSave(message: string) {
-    showToast({
-      title: message,
-      variant: "success",
-    });
+  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSavingProfile(true);
+    setProfileError(null);
+
+    try {
+      const response = await fetch("/api/v1/auth/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          phone: profile.phone.trim() || null,
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message ?? "Unable to update account details.");
+      }
+
+      const updatedUser = result.data.user as SafeAuthUser;
+      setProfile({
+        firstName: updatedUser.profile.firstName,
+        lastName: updatedUser.profile.lastName,
+        phone: updatedUser.profile.phone ?? "",
+      });
+      showToast({
+        title: "Account details saved successfully.",
+        variant: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to update account details.";
+      setProfileError(message);
+      showToast({ title: message, variant: "error" });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setIsChangingPassword(true);
+    setPasswordError(null);
+
+    try {
+      const response = await fetch("/api/v1/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword: String(formData.get("currentPassword") ?? ""),
+          newPassword: String(formData.get("newPassword") ?? ""),
+          confirmPassword: String(formData.get("confirmPassword") ?? ""),
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message ?? "Unable to change password.");
+      }
+
+      form.reset();
+      showToast({
+        title: "Password updated successfully.",
+        variant: "success",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to change password.";
+      setPasswordError(message);
+      showToast({ title: message, variant: "error" });
+    } finally {
+      setIsChangingPassword(false);
+    }
   }
 
   async function handleTemplateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -308,21 +352,6 @@ export function PromoterSettingsPage({
     }
   }
 
-  function toggleNotification(key: string) {
-    setNotifications((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  }
-
-  function toggleReviewType(type: string) {
-    setReviewSelections((current) =>
-      current.includes(type)
-        ? current.filter((item) => item !== type)
-        : [...current, type],
-    );
-  }
-
   return (
     <main className="space-y-6">
       <div className="space-y-1">
@@ -330,108 +359,170 @@ export function PromoterSettingsPage({
           Settings
         </h1>
         <p className="text-lg text-text-body">
-          Configure your workspace defaults and event readiness rules.
+          Manage your promoter account and reusable event readiness rules.
         </p>
       </div>
 
       <SettingsCard
-        title="Organization"
-        description="Basic promotion information shown across the workspace."
-        footer={
-          <>
-            <button
-              type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave("Organization settings saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
-            >
-              Save changes
-            </button>
-          </>
-        }
+        title="Account"
+        description="Manage your promoter profile, contact details, and sign-in credentials."
       >
-        <div className="grid gap-6 lg:grid-cols-[96px_1fr]">
-          <UploadSlot />
-          <div className="space-y-5">
-            <SettingsField label="Promotion name">
-              <input
-                type="text"
-                defaultValue="Desert Strike Promotions"
-                className={inputClassName}
-              />
-            </SettingsField>
+        <div className="space-y-8">
+          <form onSubmit={handleProfileSubmit} className="space-y-5">
+            {profileError ? (
+              <div className="rounded-[12px] border border-danger-border bg-danger-surface px-4 py-3 text-[15px] text-danger">
+                {profileError}
+              </div>
+            ) : null}
 
             <div className="grid gap-5 lg:grid-cols-2">
-              <SettingsField label="Contact email">
-                <input type="email" defaultValue={user.email} className={inputClassName} />
-              </SettingsField>
-              <SettingsField label="Contact phone (optional)">
+              <SettingsField label="First name">
                 <input
+                  name="firstName"
                   type="text"
-                  defaultValue="+971 50 123 4567"
+                  value={profile.firstName}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, firstName: event.target.value }))
+                  }
+                  autoComplete="given-name"
+                  className={inputClassName}
+                  required
+                />
+              </SettingsField>
+              <SettingsField label="Last name">
+                <input
+                  name="lastName"
+                  type="text"
+                  value={profile.lastName}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, lastName: event.target.value }))
+                  }
+                  autoComplete="family-name"
+                  className={inputClassName}
+                  required
+                />
+              </SettingsField>
+            </div>
+
+            <SettingsField label="Email">
+              <input
+                type="email"
+                value={user.email}
+                readOnly
+                className={`${inputClassName} bg-panel-muted text-text-muted`}
+              />
+              <p className="text-sm text-text-muted">
+                This is your login email and cannot be changed here.
+              </p>
+            </SettingsField>
+
+            <div className="space-y-3 rounded-[14px] border border-border-subtle bg-panel-muted p-4">
+              <div>
+                <h3 className="text-[18px] font-semibold text-text-strong">Optional contact</h3>
+                <p className="text-sm text-text-muted">
+                  Add a phone number for operational contact when needed.
+                </p>
+              </div>
+              <SettingsField label="Phone (optional)">
+                <input
+                  name="phone"
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(event) =>
+                    setProfile((current) => ({ ...current, phone: event.target.value }))
+                  }
+                  autoComplete="tel"
+                  placeholder="e.g. +971 50 123 4567"
                   className={inputClassName}
                 />
               </SettingsField>
             </div>
 
-            <SettingsField label="Organization information">
-              <textarea
-                rows={3}
-                placeholder="Short description, location, season..."
-                className={textareaClassName}
-              />
-            </SettingsField>
-          </div>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard
-        title="Account"
-        description="Your personal account and sign-in credentials."
-      >
-        <div className="grid gap-6 lg:grid-cols-[64px_1fr]">
-          <ProfileUploadSlot />
-          <div className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <SettingsField label="Name">
-                <input type="text" defaultValue={displayName} className={inputClassName} />
-              </SettingsField>
-              <SettingsField label="Email">
-                <input type="email" defaultValue={user.email} className={inputClassName} />
-              </SettingsField>
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfile({
+                    firstName: user.profile.firstName,
+                    lastName: user.profile.lastName,
+                    phone: user.profile.phone ?? "",
+                  });
+                  setProfileError(null);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingProfile}
+                className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingProfile ? "Saving..." : "Save account details"}
+              </button>
             </div>
+          </form>
 
+          <div className="border-t border-border-subtle pt-8">
             <div className="space-y-1">
               <h3 className="text-[18px] font-semibold text-text-strong">Password</h3>
               <p className="text-sm text-text-muted">Update your sign-in password.</p>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-3">
-              <SettingsField label="Current password">
-                <input type="password" className={inputClassName} />
-              </SettingsField>
-              <SettingsField label="New password">
-                <input type="password" className={inputClassName} />
-              </SettingsField>
-              <SettingsField label="Confirm new">
-                <input type="password" className={inputClassName} />
-              </SettingsField>
-            </div>
+            <form onSubmit={handlePasswordSubmit} className="mt-5 space-y-5">
+              {passwordError ? (
+                <div className="rounded-[12px] border border-danger-border bg-danger-surface px-4 py-3 text-[15px] text-danger">
+                  {passwordError}
+                </div>
+              ) : null}
 
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => handleSave("Password updated successfully.")}
-                className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-              >
-                Change password
-              </button>
-            </div>
+              <div className="grid gap-5 lg:grid-cols-3">
+                <SettingsField label="Current password">
+                  <input
+                    name="currentPassword"
+                    type="password"
+                    autoComplete="current-password"
+                    className={inputClassName}
+                    required
+                  />
+                </SettingsField>
+                <SettingsField label="New password">
+                  <input
+                    name="newPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    className={inputClassName}
+                    required
+                  />
+                </SettingsField>
+                <SettingsField label="Confirm new password">
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    className={inputClassName}
+                    required
+                  />
+                </SettingsField>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <button
+                  type="reset"
+                  onClick={() => setPasswordError(null)}
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isChangingPassword ? "Updating..." : "Change password"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </SettingsCard>
@@ -767,122 +858,6 @@ export function PromoterSettingsPage({
         </div>
       </SettingsCard>
 
-      <SettingsCard
-        title="Notification Preferences"
-        description="Choose which operational alerts you receive."
-        footer={
-          <>
-            <button
-              type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave("Notification preferences saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
-            >
-              Save changes
-            </button>
-          </>
-        }
-      >
-        <div className="divide-y divide-border-subtle">
-          {notificationDefaults.map((item) => (
-            <div
-              key={item.key}
-              className="flex flex-col gap-4 py-5 first:pt-0 last:pb-0 lg:flex-row lg:items-center lg:justify-between"
-            >
-              <div>
-                <p className="text-[18px] font-medium text-text-strong">{item.title}</p>
-                <p className="text-sm text-text-muted">{item.description}</p>
-              </div>
-
-              <ToggleSwitch
-                checked={notifications[item.key]}
-                onToggle={() => toggleNotification(item.key)}
-              />
-            </div>
-          ))}
-        </div>
-      </SettingsCard>
-
-      <SettingsCard
-        title="AI Verification Preferences"
-        description="How the AI verifies documents and handles uncertain results."
-        footer={
-          <>
-            <button
-              type="button"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSave("AI verification settings saved successfully.")}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
-            >
-              Save changes
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 rounded-[14px] border border-border-subtle bg-panel px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[18px] font-medium text-text-strong">
-                Automatic document verification
-              </p>
-              <p className="text-sm text-text-muted">
-                Let the AI read and accept documents that match expected fields.
-              </p>
-            </div>
-
-            <ToggleSwitch
-              checked={aiVerificationEnabled}
-              onToggle={() => setAiVerificationEnabled((value) => !value)}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-[18px] font-semibold text-text-strong">
-              Documents requiring human review
-            </h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              {reviewTypes.map((type) => (
-                <label
-                  key={type}
-                  className="flex items-center gap-3 rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-body"
-                >
-                  <input
-                    type="checkbox"
-                    checked={reviewSelections.includes(type)}
-                    onChange={() => toggleReviewType(type)}
-                    className="h-4 w-4 rounded border-border-strong accent-[var(--brand)]"
-                  />
-                  <span>{type}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <SettingsField label="Low-confidence review handling">
-            <div className="relative">
-              <select defaultValue="Escalate to Human Action" className={inputClassName}>
-                <option>Escalate to Human Action</option>
-                <option>Mark as under review</option>
-                <option>Request re-upload automatically</option>
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            </div>
-            <p className="text-sm text-text-muted">
-              Applied when the AI is not confident enough to accept a document automatically.
-            </p>
-          </SettingsField>
-        </div>
-      </SettingsCard>
     </main>
   );
 }
@@ -934,19 +909,18 @@ function labelForInputType(inputType: EventRequirementInputType) {
 }
 
 function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  const formatted = value.replace(/_/g, " ");
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
 function SettingsCard({
   title,
   description,
   children,
-  footer,
 }: {
   title: string;
   description: string;
   children: ReactNode;
-  footer?: ReactNode;
 }) {
   return (
     <section className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
@@ -958,12 +932,6 @@ function SettingsCard({
       </div>
 
       <div className="p-5">{children}</div>
-
-      {footer ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle px-5 py-4">
-          {footer}
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -1044,22 +1012,6 @@ function InlineCheckbox({
   );
 }
 
-function UploadSlot() {
-  return (
-    <div className="flex h-[76px] w-[76px] items-center justify-center rounded-[14px] border border-dashed border-border-strong bg-panel-muted text-text-muted">
-      <UploadIcon className="h-4 w-4" />
-    </div>
-  );
-}
-
-function ProfileUploadSlot() {
-  return (
-    <div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border border-dashed border-border-strong bg-panel-muted text-text-muted">
-      <UploadIcon className="h-4 w-4" />
-    </div>
-  );
-}
-
 function ToggleField({
   label,
   checked,
@@ -1129,25 +1081,6 @@ const inputClassName =
 
 const textareaClassName =
   "w-full rounded-[12px] border border-border-subtle bg-panel px-4 py-3 text-[15px] text-text-strong outline-none transition placeholder:text-text-muted focus:border-brand";
-
-function UploadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 16V6" />
-      <path d="m8 10 4-4 4 4" />
-      <path d="M5 18h14" />
-    </svg>
-  );
-}
 
 function PlusIcon({ className }: { className?: string }) {
   return (
@@ -1220,23 +1153,6 @@ function TrashIcon({ className }: { className?: string }) {
       <path d="M19 6l-1 13a1.8 1.8 0 0 1-1.8 1.7H7.8A1.8 1.8 0 0 1 6 19L5 6" />
       <path d="M10 10v6" />
       <path d="M14 10v6" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }

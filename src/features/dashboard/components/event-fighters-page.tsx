@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { EventTabs } from "@/features/dashboard/components/event-tabs";
 import type { PromoterEventFighterListData } from "@/server/services/events.service";
 
 const statusFilters = [
@@ -43,7 +44,7 @@ export function EventFightersPage({
         className="inline-flex items-center gap-2 text-[15px] text-text-body transition hover:text-text-strong"
       >
         <ArrowLeftIcon className="h-4 w-4" />
-        <span>Back to fight card</span>
+        <span>Back</span>
       </Link>
 
       <div className="flex flex-col gap-4 py-2 lg:flex-row lg:items-start lg:justify-between">
@@ -64,6 +65,8 @@ export function EventFightersPage({
           <SummaryTile label="Waiting" value={data.summary.waiting} tone="warning" />
         </div>
       </div>
+
+      <EventTabs eventSlug={data.event.slug} activeTab="Fighters" />
 
       <section className="rounded-[18px] border border-border-subtle bg-panel p-4 shadow-[var(--shadow-card)]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">

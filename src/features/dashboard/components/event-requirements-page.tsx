@@ -5,6 +5,7 @@ import Link from "next/link";
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { EventTabs } from "@/features/dashboard/components/event-tabs";
 import { useToast } from "@/providers/toast-provider";
 import type {
   EventRequirementInputType,
@@ -85,6 +86,7 @@ export function EventRequirementsPage({
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState<EventRequirementRecord | null>(null);
   const [deadlineRule, setDeadlineRule] =
     useState<RequirementDueAnchor>("custom_date");
 
@@ -125,11 +127,11 @@ export function EventRequirementsPage({
 
     try {
       const response = await fetch(`/api/v1/events/${eventId}/requirements`, {
-        method: "POST",
+        method: editingRequirement ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requirementPayload),
+        body: JSON.stringify(editingRequirement ? { ...requirementPayload, requirementId: editingRequirement.id } : requirementPayload),
       });
 
       const result = await response.json();
@@ -159,12 +161,13 @@ export function EventRequirementsPage({
       showToast({
         title: shouldSaveAsDefault
           ? "Requirement added and saved as a default template."
-          : "Requirement added to this event.",
+          : editingRequirement ? "Requirement updated." : "Requirement added to this event.",
         variant: "success",
       });
 
       form.reset();
       setDeadlineRule("custom_date");
+      setEditingRequirement(null);
       setIsRequirementModalOpen(false);
 
       startTransition(() => {
@@ -179,6 +182,23 @@ export function EventRequirementsPage({
       });
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(requirement: EventRequirementRecord) {
+    if (!eventId || !window.confirm(`Remove "${requirement.name}" from this event?`)) return;
+    try {
+      const response = await fetch(`/api/v1/events/${eventId}/requirements`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requirementId: requirement.id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error?.message ?? "Unable to delete requirement.");
+      showToast({ title: "Requirement removed.", variant: "success" });
+      startTransition(() => router.refresh());
+    } catch (error) {
+      showToast({ title: error instanceof Error ? error.message : "Unable to delete requirement.", variant: "error" });
     }
   }
 
@@ -205,6 +225,8 @@ export function EventRequirementsPage({
         <button
           type="button"
           onClick={() => {
+            setEditingRequirement(null);
+            setDeadlineRule("custom_date");
             setIsRequirementModalOpen(true);
           }}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong"
@@ -214,19 +236,7 @@ export function EventRequirementsPage({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-8 border-b border-border-subtle">
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}`}>Fight Card</EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/fighters`}>Fighters</EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/readiness`}>
-          Event Readiness
-        </EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/requirements`} active>
-          Required Documents
-        </EventTab>
-        <EventTab href={`/dashboard/promoter/events/${eventSlug}/post-reminders`}>
-          Post Reminders
-        </EventTab>
-      </div>
+      <EventTabs eventSlug={eventSlug} activeTab="Required Documents" />
 
       {!eventId ? (
         <section className="rounded-[16px] border border-warning-border bg-warning-surface-strong px-4 py-3 text-[15px] text-warning-strong">
@@ -237,7 +247,8 @@ export function EventRequirementsPage({
 
       {isRequirementModalOpen ? (
         <FormModal
-          title="Add requirement"
+          key={editingRequirement?.id ?? "new-requirement"}
+          title={editingRequirement ? "Edit requirement" : "Add requirement"}
           description="Every new fight will inherit this event-level readiness requirement."
           onClose={() => setIsRequirementModalOpen(false)}
         >
@@ -249,12 +260,13 @@ export function EventRequirementsPage({
                 type="text"
                 placeholder="e.g. Medical Clearance"
                 className={inputClassName}
+                defaultValue={editingRequirement?.name ?? ""}
                 required
               />
             </FormField>
 
             <FormField label="Category" required>
-              <select name="category" className={inputClassName} defaultValue="Medical">
+              <select name="category" className={inputClassName} defaultValue={editingRequirement?.category ?? "Medical"}>
                 {requirementCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -264,7 +276,7 @@ export function EventRequirementsPage({
             </FormField>
 
             <FormField label="Input type" required>
-              <select name="inputType" className={inputClassName} defaultValue="document">
+              <select name="inputType" className={inputClassName} defaultValue={editingRequirement?.inputType ?? "document"}>
                 {requirementInputTypes.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
@@ -274,7 +286,7 @@ export function EventRequirementsPage({
             </FormField>
 
             <FormField label="Priority" required>
-              <select name="priority" className={inputClassName} defaultValue="medium">
+              <select name="priority" className={inputClassName} defaultValue={editingRequirement?.priority ?? "medium"}>
                 {requirementPriorities.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
@@ -302,7 +314,7 @@ export function EventRequirementsPage({
 
             {deadlineRule === "custom_date" ? (
               <FormField label="Exact deadline" required>
-                <input name="dueDate" type="date" className={inputClassName} required />
+                <input name="dueDate" type="date" defaultValue={editingRequirement?.dueDate?.slice(0, 10) ?? ""} className={inputClassName} required />
               </FormField>
             ) : (
               <FormField label="Deadline days" required>
@@ -310,7 +322,7 @@ export function EventRequirementsPage({
                   name="dueOffsetDays"
                   type="number"
                   min="0"
-                  defaultValue="3"
+                  defaultValue={editingRequirement?.dueOffsetDays ?? 3}
                   className={inputClassName}
                   required
                 />
@@ -321,7 +333,7 @@ export function EventRequirementsPage({
               <select
                 name="reminderCadence"
                 className={inputClassName}
-                defaultValue="daily_until_resolved"
+                defaultValue={editingRequirement?.reminderCadence ?? "daily_until_resolved"}
               >
                 {reminderCadenceOptions.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -336,7 +348,7 @@ export function EventRequirementsPage({
                 name="reminderDaysBeforeDue"
                 type="number"
                 min="0"
-                defaultValue="3"
+                defaultValue={editingRequirement?.reminderDaysBeforeDue?.[0] ?? 3}
                 className={inputClassName}
               />
               <p className="text-sm text-text-muted">
@@ -351,6 +363,7 @@ export function EventRequirementsPage({
               name="description"
               rows={4}
               placeholder="What should the fighter or manager upload here?"
+              defaultValue={editingRequirement?.description ?? ""}
               className={textareaClassName}
             />
           </FormField>
@@ -361,6 +374,7 @@ export function EventRequirementsPage({
                 name="reminderSubject"
                 type="text"
                 placeholder="e.g. Document reminder"
+                defaultValue={editingRequirement?.reminderSubject ?? ""}
                 className={inputClassName}
               />
             </FormField>
@@ -370,6 +384,7 @@ export function EventRequirementsPage({
                 name="reminderMessage"
                 rows={4}
                 placeholder="Share the message managers receive before the due date."
+                defaultValue={editingRequirement?.reminderMessage ?? ""}
                 className={textareaClassName}
               />
             </FormField>
@@ -379,13 +394,14 @@ export function EventRequirementsPage({
             <ToggleField
               name="required"
               label="Required for readiness"
-              defaultChecked
+              defaultChecked={editingRequirement?.required ?? true}
             />
             <ToggleField
               name="humanVerificationRequired"
               label="Human verification"
+              defaultChecked={editingRequirement?.humanVerificationRequired ?? false}
             />
-            <ToggleField name="isSignedAgreement" label="Signed agreement" />
+            <ToggleField name="isSignedAgreement" label="Signed agreement" defaultChecked={editingRequirement?.isSignedAgreement ?? false} />
           </div>
 
           <label className="flex items-start gap-3 rounded-[14px] border border-border-subtle bg-panel-muted px-4 py-3 text-[15px] text-text-body">
@@ -402,7 +418,7 @@ export function EventRequirementsPage({
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              onClick={() => setIsRequirementModalOpen(false)}
+              onClick={() => { setEditingRequirement(null); setIsRequirementModalOpen(false); }}
               className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
             >
               Cancel
@@ -412,7 +428,7 @@ export function EventRequirementsPage({
               disabled={isSaving}
               className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSaving ? "Saving..." : "Save requirement"}
+              {isSaving ? "Saving..." : editingRequirement ? "Update requirement" : "Save requirement"}
             </button>
           </div>
           </form>
@@ -447,6 +463,7 @@ export function EventRequirementsPage({
                   <th className="px-5 py-4 font-semibold">Priority</th>
                   <th className="px-5 py-4 font-semibold">Due Date</th>
                   <th className="px-5 py-4 font-semibold">Rules</th>
+                  <th className="px-5 py-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -495,6 +512,12 @@ export function EventRequirementsPage({
                         ) : null}
                       </div>
                     </td>
+                    <td className="px-5 py-4">
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { setEditingRequirement(requirement); setDeadlineRule(requirement.dueAnchor); setIsRequirementModalOpen(true); }} className="text-sm font-medium text-brand hover:text-brand-strong">Edit</button>
+                        <button type="button" onClick={() => handleDelete(requirement)} className="text-sm font-medium text-danger hover:text-danger-strong">Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -503,36 +526,6 @@ export function EventRequirementsPage({
         )}
       </section>
     </main>
-  );
-}
-
-function EventTab({
-  children,
-  href,
-  active = false,
-}: {
-  children: ReactNode;
-  href?: string;
-  active?: boolean;
-}) {
-  const className = `border-b-2 px-3 pb-3 text-[15px] font-medium transition ${
-    active
-      ? "border-brand text-brand"
-      : "border-transparent text-text-body hover:text-text-strong"
-  }`;
-
-  if (href) {
-    return (
-      <Link href={href} className={className}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" className={className}>
-      {children}
-    </button>
   );
 }
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { CreateEventForm } from "@/features/dashboard/components/create-event-form";
-import { listRequirementTemplatesForUser } from "@/server/services/requirement-templates.service";
+import { listDefaultRequirementTemplatesForUser } from "@/server/services/requirement-templates.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
 
 export default async function CreatePromoterEventPage() {
@@ -11,7 +11,7 @@ export default async function CreatePromoterEventPage() {
     redirect("/auth/sign-in");
   }
 
-  const templates = await listRequirementTemplatesForUser(user.id);
+  const templates = await listDefaultRequirementTemplatesForUser(user.id);
 
   return <CreateEventForm initialTemplates={templates} />;
 }
