@@ -4,6 +4,10 @@ import type { FormEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  RequirementTemplateModal,
+  type RequirementTemplateModalPayload,
+} from "@/features/dashboard/components/requirement-template-modal";
 import { useToast } from "@/providers/toast-provider";
 import type { SafeAuthUser } from "@/types/auth";
 import type {
@@ -177,55 +181,13 @@ export function PromoterSettingsPage({
     }
   }
 
-  async function handleTemplateSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const templateId = String(formData.get("templateId") ?? "");
+  async function handleTemplateModalSubmit(payload: RequirementTemplateModalPayload) {
+    const templateId = editingTemplateId;
 
     setIsSubmittingTemplate(true);
     setTemplateError(null);
 
     try {
-      const dueDaysValue = String(formData.get("dueDaysBeforeEvent") ?? "").trim();
-      const dueOffsetDaysValue = String(formData.get("dueOffsetDays") ?? "").trim();
-      const reminderDaysValue = String(formData.get("reminderDaysBeforeDue") ?? "").trim();
-      const dueAnchor = String(
-        formData.get("dueAnchor") ?? "before_event",
-      ) as RequirementDueAnchor;
-      const reminderCadence = String(
-        formData.get("reminderCadence") ?? "daily_until_resolved",
-      ) as RequirementReminderCadence;
-      const dueOffsetDays = dueOffsetDaysValue
-        ? Number(dueOffsetDaysValue)
-        : dueDaysValue
-          ? Number(dueDaysValue)
-          : undefined;
-
-      const payload = {
-        category: String(formData.get("category") ?? ""),
-        name: String(formData.get("name") ?? ""),
-        description: String(formData.get("description") ?? ""),
-        inputType: String(formData.get("inputType") ?? "document"),
-        required: formData.get("required") === "on",
-        priority: String(formData.get("priority") ?? "medium"),
-        dueAnchor,
-        dueOffsetDays,
-        dueDaysBeforeEvent: dueAnchor === "before_event" ? dueOffsetDays : undefined,
-        reminderEnabled: reminderCadence !== "off",
-        reminderCadence,
-        reminderDaysBeforeDue: reminderDaysValue ? [Number(reminderDaysValue)] : [],
-        reminderSubject: String(formData.get("reminderSubject") ?? ""),
-        reminderMessage: String(formData.get("reminderMessage") ?? ""),
-        structuredFields: editingTemplate?.structuredFields ?? [],
-        humanVerificationRequired: formData.get("humanVerificationRequired") === "on",
-        isSignedAgreement: formData.get("isSignedAgreement") === "on",
-        acceptedFileTypes:
-          String(formData.get("inputType") ?? "document") === "document"
-            ? ["pdf", "jpg", "jpeg", "png"]
-            : [],
-      };
-
       const response = await fetch(
         templateId
           ? `/api/v1/requirement-templates/${templateId}`
@@ -235,7 +197,10 @@ export function PromoterSettingsPage({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            structuredFields: editingTemplate?.structuredFields ?? [],
+          }),
         },
       );
 
@@ -261,7 +226,6 @@ export function PromoterSettingsPage({
 
       setEditingTemplateId(null);
       setIsTemplateModalOpen(false);
-      form.reset();
 
       showToast({
         title: templateId
@@ -547,225 +511,18 @@ export function PromoterSettingsPage({
             </button>
           </div>
 
-          {isTemplateModalOpen ? (
-            <FormModal
-              title={editingTemplate ? "Edit template" : "Add template"}
-              description="These defaults will auto-populate new events when they are created."
-              onClose={() => {
-                setEditingTemplateId(null);
-                setTemplateError(null);
-                setIsTemplateModalOpen(false);
-              }}
-            >
-              <form
-                onSubmit={handleTemplateSubmit}
-                className="space-y-4"
-          >
-            {templateError ? (
-              <div className="rounded-[12px] border border-danger-border bg-danger-surface px-4 py-3 text-[15px] text-danger">
-                {templateError}
-              </div>
-            ) : null}
-
-            <input name="templateId" type="hidden" value={editingTemplate?.id ?? ""} />
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <SettingsField label="Template name">
-                <input
-                  key={`name-${editingTemplate?.id ?? "new"}`}
-                  name="name"
-                  type="text"
-                  defaultValue={editingTemplate?.name ?? ""}
-                  placeholder="e.g. Passport / ID"
-                  className={inputClassName}
-                  required
-                />
-              </SettingsField>
-
-              <SettingsField label="Category">
-                <select
-                  key={`category-${editingTemplate?.id ?? "new"}`}
-                  name="category"
-                  defaultValue={editingTemplate?.category ?? "Legal"}
-                  className={inputClassName}
-                >
-                  {templateCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-
-              <SettingsField label="Input type">
-                <select
-                  key={`inputType-${editingTemplate?.id ?? "new"}`}
-                  name="inputType"
-                  defaultValue={editingTemplate?.inputType ?? "document"}
-                  className={inputClassName}
-                >
-                  {templateInputTypes.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-
-              <SettingsField label="Priority">
-                <select
-                  key={`priority-${editingTemplate?.id ?? "new"}`}
-                  name="priority"
-                  defaultValue={editingTemplate?.priority ?? "medium"}
-                  className={inputClassName}
-                >
-                  {templatePriorities.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-
-              <SettingsField label="Deadline rule">
-                <select
-                  key={`due-anchor-${editingTemplate?.id ?? "new"}`}
-                  name="dueAnchor"
-                  defaultValue={editingTemplate?.dueAnchor ?? "before_event"}
-                  className={inputClassName}
-                >
-                  {dueAnchorOptions.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-
-              <SettingsField label="Deadline days">
-                <input
-                  key={`due-offset-${editingTemplate?.id ?? "new"}`}
-                  name="dueOffsetDays"
-                  type="number"
-                  min="0"
-                  defaultValue={
-                    editingTemplate?.dueOffsetDays ??
-                    editingTemplate?.dueDaysBeforeEvent ??
-                    ""
-                  }
-                  className={inputClassName}
-                />
-              </SettingsField>
-
-              <SettingsField label="Reminder cadence">
-                <select
-                  key={`reminder-cadence-${editingTemplate?.id ?? "new"}`}
-                  name="reminderCadence"
-                  defaultValue={
-                    editingTemplate?.reminderCadence ?? "daily_until_resolved"
-                  }
-                  className={inputClassName}
-                >
-                  {reminderCadenceOptions.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </SettingsField>
-
-              <SettingsField label="Start daily reminders">
-                <input
-                  key={`reminder-${editingTemplate?.id ?? "new"}`}
-                  name="reminderDaysBeforeDue"
-                  type="number"
-                  min="0"
-                  defaultValue={editingTemplate?.reminderDaysBeforeDue[0] ?? ""}
-                  placeholder="0"
-                  className={inputClassName}
-                />
-                <p className="text-sm text-text-muted">
-                  Daily reminders begin this many days before the deadline and stop once the
-                  requirement is resolved.
-                </p>
-              </SettingsField>
-            </div>
-
-            <SettingsField label="Description (optional)">
-              <textarea
-                key={`description-${editingTemplate?.id ?? "new"}`}
-                name="description"
-                rows={3}
-                defaultValue={editingTemplate?.description ?? ""}
-                placeholder="Describe what needs to be submitted or confirmed."
-                className={textareaClassName}
-              />
-            </SettingsField>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <SettingsField label="Reminder email subject (optional)">
-                <input
-                  key={`subject-${editingTemplate?.id ?? "new"}`}
-                  name="reminderSubject"
-                  type="text"
-                  defaultValue={editingTemplate?.reminderSubject ?? ""}
-                  placeholder="e.g. Medical clearance reminder"
-                  className={inputClassName}
-                />
-              </SettingsField>
-
-              <SettingsField label="Reminder email message (optional)">
-                <textarea
-                  key={`message-${editingTemplate?.id ?? "new"}`}
-                  name="reminderMessage"
-                  rows={3}
-                  defaultValue={editingTemplate?.reminderMessage ?? ""}
-                  placeholder="Write the reminder message sent to the manager."
-                  className={textareaClassName}
-                />
-              </SettingsField>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <InlineCheckbox
-                key={`required-${editingTemplate?.id ?? "new"}`}
-                name="required"
-                label="Required"
-                defaultChecked={editingTemplate?.required ?? true}
-              />
-              <InlineCheckbox
-                key={`human-${editingTemplate?.id ?? "new"}`}
-                name="humanVerificationRequired"
-                label="Human verify"
-                defaultChecked={editingTemplate?.humanVerificationRequired ?? false}
-              />
-              <InlineCheckbox
-                key={`agreement-${editingTemplate?.id ?? "new"}`}
-                name="isSignedAgreement"
-                label="Signed agreement"
-                defaultChecked={editingTemplate?.isSignedAgreement ?? false}
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isSubmittingTemplate}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <PlusIcon className="h-4 w-4" />
-                <span>
-                  {isSubmittingTemplate
-                    ? "Saving..."
-                    : editingTemplate
-                      ? "Update Template"
-                      : "Add Template"}
-                </span>
-              </button>
-            </div>
-              </form>
-            </FormModal>
-          ) : null}
+          <RequirementTemplateModal
+            isOpen={isTemplateModalOpen}
+            mode="template"
+            editingItem={editingTemplate}
+            isSubmitting={isSubmittingTemplate}
+            onClose={() => {
+              setEditingTemplateId(null);
+              setTemplateError(null);
+              setIsTemplateModalOpen(false);
+            }}
+            onSubmit={handleTemplateModalSubmit}
+          />
 
           <div className="space-y-3">
             {templateState.map((template) => (

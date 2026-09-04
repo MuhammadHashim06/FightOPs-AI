@@ -5,6 +5,10 @@ import { startTransition, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import {
+  RequirementTemplateModal,
+  type RequirementTemplateModalPayload,
+} from "@/features/dashboard/components/requirement-template-modal";
 import { useToast } from "@/providers/toast-provider";
 import type { RequirementTemplateRecord } from "@/types/readiness";
 
@@ -22,26 +26,12 @@ export function CreateEventForm({
   const [eventLocation, setEventLocation] = useState("");
   const [eventNote, setEventNote] = useState("");
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [templateName, setTemplateName] = useState("");
-  const [templateCategory, setTemplateCategory] = useState("Operations");
-  const [templateInputType, setTemplateInputType] = useState("document");
-  const [templatePriority, setTemplatePriority] = useState("medium");
-  const [templateDueAnchor, setTemplateDueAnchor] = useState("before_event");
-  const [templateDueDays, setTemplateDueDays] = useState("3");
-  const [templateReminderCadence, setTemplateReminderCadence] = useState("daily_until_resolved");
-  const [templateReminderDays, setTemplateReminderDays] = useState("3");
-  const [templateDescription, setTemplateDescription] = useState("");
-  const [templateSubject, setTemplateSubject] = useState("");
-  const [templateMessage, setTemplateMessage] = useState("");
-  const [templateRequired, setTemplateRequired] = useState(true);
-  const [templateHumanReview, setTemplateHumanReview] = useState(false);
-  const [templateSignedAgreement, setTemplateSignedAgreement] = useState(false);
-  const [saveTemplateAsDefault, setSaveTemplateAsDefault] = useState(false);
   const [isTemplateSaving, setIsTemplateSaving] = useState(false);
   const [createdTemplates, setCreatedTemplates] = useState<RequirementTemplateRecord[]>([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>(
     initialTemplates.map((template) => template.id),
   );
+
   const availableTemplates = useMemo(() => {
     const templates = [...initialTemplates, ...createdTemplates];
     return templates.filter(
@@ -88,8 +78,8 @@ export function CreateEventForm({
     setCurrentStep(2);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+    if (event) event.preventDefault();
     setIsPending(true);
 
     try {
@@ -147,8 +137,7 @@ export function CreateEventForm({
     return selectedTemplateIds.includes(templateId);
   }
 
-  async function handleCreateTemplate() {
-    if (!templateName.trim()) return;
+  async function handleCreateTemplateModalSubmit(payload: RequirementTemplateModalPayload) {
     setIsTemplateSaving(true);
 
     try {
@@ -156,24 +145,8 @@ export function CreateEventForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: templateName.trim(),
-          category: templateCategory,
-          inputType: templateInputType,
-          required: templateRequired,
-          priority: templatePriority,
-          dueAnchor: templateDueAnchor,
-          dueDaysBeforeEvent: templateDueAnchor === "before_event" ? Number(templateDueDays) : undefined,
-          dueOffsetDays: Number(templateDueDays),
-          reminderEnabled: templateReminderCadence !== "off",
-          reminderCadence: templateReminderCadence,
-          reminderDaysBeforeDue: templateReminderDays ? [Number(templateReminderDays)] : [],
-          description: templateDescription,
-          reminderSubject: templateSubject,
-          reminderMessage: templateMessage,
-          humanVerificationRequired: templateHumanReview,
-          isSignedAgreement: templateSignedAgreement,
-          acceptedFileTypes: templateInputType === "document" ? ["pdf", "jpg", "jpeg", "png"] : [],
-          isDefault: saveTemplateAsDefault,
+          ...payload,
+          isDefault: Boolean(payload.saveAsDefault),
         }),
       });
       const result = await response.json();
@@ -183,14 +156,13 @@ export function CreateEventForm({
 
       setCreatedTemplates((current) => [...current, result.data.template]);
       setSelectedTemplateIds((current) => [...current, result.data.template.id]);
-      setTemplateName("");
-      setTemplateDescription("");
-      setTemplateSubject("");
-      setTemplateMessage("");
-      setSaveTemplateAsDefault(false);
       setIsTemplateModalOpen(false);
-      showToast({ title: saveTemplateAsDefault ? "Template created, selected, and saved as a default." : "Template created and selected for this event.", variant: "success" });
-      startTransition(() => router.refresh());
+      showToast({
+        title: payload.saveAsDefault
+          ? "Template created, selected, and saved as a default."
+          : "Template created and selected for this event.",
+        variant: "success",
+      });
     } catch (error) {
       showToast({
         title: error instanceof Error ? error.message : "Unable to create template.",
@@ -320,7 +292,7 @@ export function CreateEventForm({
           </div>
         </>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-5">
           <section className="overflow-hidden rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
             <div className="space-y-6 p-6">
               <div className="border-b border-border-subtle pb-4">
@@ -348,22 +320,22 @@ export function CreateEventForm({
                   </button>
                   {availableTemplates.length > 0 ? (
                     <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedTemplateIds(availableTemplates.map((template) => template.id))
-                      }
-                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-                    >
-                      Select all
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTemplateIds([])}
-                      className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
-                    >
-                      Clear
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedTemplateIds(availableTemplates.map((template) => template.id))
+                        }
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTemplateIds([])}
+                        className="inline-flex h-9 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong transition hover:bg-panel-muted"
+                      >
+                        Clear
+                      </button>
                     </>
                   ) : null}
                 </div>
@@ -427,66 +399,13 @@ export function CreateEventForm({
             </div>
           </section>
 
-          {isTemplateModalOpen ? (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-dark/40 p-4">
-              <section className="w-full max-w-lg rounded-[18px] border border-border-subtle bg-panel p-6 shadow-[var(--shadow-card)]">
-                <h2 className="text-[21px] font-semibold text-text-strong">Add template</h2>
-                <p className="mt-1 text-sm text-text-body">Create a reusable document requirement and select it for this event.</p>
-                <div className="mt-5 space-y-4">
-                  <FormField label="Template name" required>
-                    <input value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="e.g. Visa Information" className={inputClassName} required />
-                  </FormField>
-                  <FormField label="Category" required>
-                    <select value={templateCategory} onChange={(event) => setTemplateCategory(event.target.value)} className={inputClassName}>
-                      {['Legal', 'Medical', 'Insurance', 'Travel', 'Media', 'Operations'].map((category) => <option key={category}>{category}</option>)}
-                    </select>
-                  </FormField>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField label="Input type" required>
-                      <select value={templateInputType} onChange={(event) => setTemplateInputType(event.target.value)} className={inputClassName}>
-                        <option value="document">Document upload</option><option value="text">Text field</option><option value="date">Date</option><option value="number">Number</option><option value="choice">Choice</option><option value="confirmation">Confirmation</option>
-                      </select>
-                    </FormField>
-                    <FormField label="Priority" required>
-                      <select value={templatePriority} onChange={(event) => setTemplatePriority(event.target.value)} className={inputClassName}>
-                        <option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
-                      </select>
-                    </FormField>
-                    <FormField label="Deadline rule" required>
-                      <select value={templateDueAnchor} onChange={(event) => setTemplateDueAnchor(event.target.value)} className={inputClassName}>
-                        <option value="before_event">Deadline before event</option><option value="after_fight_scheduled">After fight scheduling</option><option value="after_invite_accepted">After invite acceptance</option><option value="after_signed_agreement_approved">After agreement approval</option>
-                      </select>
-                    </FormField>
-                    <FormField label="Deadline days" required>
-                      <input type="number" min="0" value={templateDueDays} onChange={(event) => setTemplateDueDays(event.target.value)} className={inputClassName} />
-                    </FormField>
-                    <FormField label="Reminder cadence" required>
-                      <select value={templateReminderCadence} onChange={(event) => setTemplateReminderCadence(event.target.value)} className={inputClassName}>
-                        <option value="daily_until_resolved">Daily until resolved</option><option value="once_before_due">Once before deadline</option><option value="off">No reminder</option>
-                      </select>
-                    </FormField>
-                    <FormField label="Start reminders (days before)">
-                      <input type="number" min="0" value={templateReminderDays} onChange={(event) => setTemplateReminderDays(event.target.value)} className={inputClassName} />
-                    </FormField>
-                  </div>
-                  <FormField label="Description (optional)">
-                    <textarea rows={3} value={templateDescription} onChange={(event) => setTemplateDescription(event.target.value)} placeholder="Describe what needs to be submitted or confirmed." className={textareaClassName} />
-                  </FormField>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField label="Reminder email subject (optional)"><input value={templateSubject} onChange={(event) => setTemplateSubject(event.target.value)} className={inputClassName} /></FormField>
-                    <FormField label="Reminder email message (optional)"><textarea rows={3} value={templateMessage} onChange={(event) => setTemplateMessage(event.target.value)} placeholder="Please submit {{requirementName}} before {{dueDate}}." className={textareaClassName} /><p className="mt-1 text-xs text-text-muted">Variables: {"{{requirementName}}"}, {"{{fighterName}}"}, {"{{eventName}}"}, {"{{dueDate}}"}, {"{{daysRemaining}}"}, {"{{uploadLink}}"}</p></FormField>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {[[templateRequired, setTemplateRequired, "Required for readiness"], [templateHumanReview, setTemplateHumanReview, "Human verification"], [templateSignedAgreement, setTemplateSignedAgreement, "Signed agreement"], [saveTemplateAsDefault, setSaveTemplateAsDefault, "Also add to default templates"]].map(([checked, setter, label]) => <label key={String(label)} className="flex items-center gap-2 rounded-[10px] border border-border-subtle px-3 py-2 text-sm text-text-body"><input type="checkbox" checked={Boolean(checked)} onChange={(event) => (setter as (value: boolean) => void)(event.target.checked)} className="accent-[var(--brand)]" />{String(label)}</label>)}
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <button type="button" onClick={() => setIsTemplateModalOpen(false)} className="inline-flex h-10 items-center rounded-[10px] border border-border-subtle bg-panel px-4 text-sm font-medium text-text-strong">Cancel</button>
-                    <button type="button" onClick={() => void handleCreateTemplate()} disabled={isTemplateSaving || !templateName.trim()} className="inline-flex h-10 items-center rounded-[10px] bg-brand px-4 text-sm font-medium text-text-inverse disabled:opacity-60">{isTemplateSaving ? "Saving..." : "Create template"}</button>
-                  </div>
-                </div>
-              </section>
-            </div>
-          ) : null}
+          <RequirementTemplateModal
+            isOpen={isTemplateModalOpen}
+            mode="create-event"
+            isSubmitting={isTemplateSaving}
+            onClose={() => setIsTemplateModalOpen(false)}
+            onSubmit={handleCreateTemplateModalSubmit}
+          />
 
           <div className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-5 sm:flex-row sm:items-center sm:justify-end">
             <Link
@@ -503,14 +422,15 @@ export function CreateEventForm({
               Back
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={() => void handleSubmit()}
               disabled={isPending}
               className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? "Saving..." : "Save event"}
             </button>
           </div>
-        </form>
+        </div>
       )}
     </main>
   );

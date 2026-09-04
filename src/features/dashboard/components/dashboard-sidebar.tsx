@@ -43,44 +43,62 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             icon: BellIcon,
           },
         ]
-      : [
-          {
-            href: basePath,
-            label: "Overview",
-            icon: OverviewIcon,
-          },
-          {
-            href: `${basePath}/events`,
-            label: "Events",
-            icon: CalendarIcon,
-          },
-          {
-            href: `${basePath}/human-action`,
-            label: "Human Action",
-            icon: AlertIcon,
-          },
-          {
-            href: `${basePath}/documents`,
-            label: "Documents",
-            icon: FolderIcon,
-          },
-          {
-            href: `${basePath}/activity-logs`,
-            label: "Activity Logs",
-            icon: ActivityIcon,
-          },
-          {
-            href: `${basePath}/vision`,
-            label: "AI Vision",
-            icon: SparkIcon,
-          },
-        ];
+      : user.role === "admin"
+        ? [
+            {
+              href: basePath,
+              label: "Dashboard",
+              icon: OverviewIcon,
+            },
+            {
+              href: `${basePath}/users`,
+              label: "Users",
+              icon: UsersIcon,
+            },
+            {
+              href: `${basePath}/events`,
+              label: "Events",
+              icon: CalendarIcon,
+            },
+          ]
+        : [
+            {
+              href: basePath,
+              label: "Overview",
+              icon: OverviewIcon,
+            },
+            {
+              href: `${basePath}/events`,
+              label: "Events",
+              icon: CalendarIcon,
+            },
+            {
+              href: `${basePath}/human-action`,
+              label: "Human Action",
+              icon: AlertIcon,
+            },
+            {
+              href: `${basePath}/documents`,
+              label: "Documents",
+              icon: FolderIcon,
+            },
+            {
+              href: `${basePath}/activity-logs`,
+              label: "Activity Logs",
+              icon: ActivityIcon,
+            },
+            {
+              href: `${basePath}/vision`,
+              label: "AI Vision",
+              icon: SparkIcon,
+            },
+          ];
   const settingsNavItems =
-    user.role === "fighter"
+    user.role === "admin"
       ? [
           {
             href: `${basePath}/settings`,
-            label: "Settings",
+            label: "Setting",
             icon: SettingsIcon,
           },
         ]
@@ -422,6 +440,26 @@ function UserIcon({ className }: IconProps) {
     >
       <circle cx="12" cy="8.5" r="3.5" />
       <path d="M5.5 18.5a6.5 6.5 0 0 1 13 0" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
 }

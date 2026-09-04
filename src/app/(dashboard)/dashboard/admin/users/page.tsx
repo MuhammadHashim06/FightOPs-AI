@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { AdminSettingsPage } from "@/features/dashboard/components/admin-settings-page";
+import { AdminUsersPage } from "@/features/dashboard/components/admin-users-page";
+import { getAdminUsersData } from "@/server/services/admin.service";
 import { getAuthenticatedUser } from "@/server/services/session.service";
 
-export default async function AdminSettingsRoute() {
+export default async function AdminUsersRoute() {
   const user = await getAuthenticatedUser();
 
   if (!user) {
@@ -14,5 +15,7 @@ export default async function AdminSettingsRoute() {
     redirect(`/dashboard/${user.role}`);
   }
 
-  return <AdminSettingsPage user={user} />;
+  const users = await getAdminUsersData(user);
+
+  return <AdminUsersPage users={users} />;
 }

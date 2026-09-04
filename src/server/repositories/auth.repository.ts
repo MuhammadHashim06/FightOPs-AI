@@ -16,6 +16,7 @@ export interface AuthRepository {
   findUserById(userId: string): Promise<AuthUser | null>;
   findUserByEmail(email: string): Promise<AuthUser | null>;
   listUsersByRole(role: AuthUser["role"]): Promise<AuthUser[]>;
+  listAllUsers(): Promise<AuthUser[]>;
   createUser(user: Omit<AuthUser, "id">): Promise<AuthUser>;
   updateUser(user: AuthUser): Promise<AuthUser>;
   createSession(session: Omit<AuthSession, "id">): Promise<AuthSession>;
@@ -56,6 +57,12 @@ export const authRepository: AuthRepository = {
     await connectToDatabase();
 
     const users = await UserMongoModel.find({ role, status: "active" }).lean();
+    return users.map(mapUser);
+  },
+  async listAllUsers() {
+    await connectToDatabase();
+
+    const users = await UserMongoModel.find().sort({ createdAt: -1 }).lean();
     return users.map(mapUser);
   },
   async createUser(user) {

@@ -87,3 +87,28 @@ export async function getAdminPlatformSettings(user: AuthUser) {
     },
   };
 }
+
+export async function getAdminUsersData(user: AuthUser) {
+  if (user.role !== "admin") {
+    throw new Error("Only admins can access platform users.");
+  }
+
+  const users = await authRepository.listAllUsers();
+
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    role: u.role,
+    status: u.status,
+    displayName: u.profile.displayName,
+    firstName: u.profile.firstName,
+    lastName: u.profile.lastName,
+    phone: u.profile.phone,
+    emailVerifiedAt: u.emailVerifiedAt,
+    lastLoginAt: u.lastLoginAt,
+    createdAt: u.createdAt,
+  }));
+}
+
+export type AdminUserData = Awaited<ReturnType<typeof getAdminUsersData>>[number];
+

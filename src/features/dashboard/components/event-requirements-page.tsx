@@ -6,6 +6,10 @@ import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { EventTabs } from "@/features/dashboard/components/event-tabs";
+import {
+  RequirementTemplateModal,
+  type RequirementTemplateModalPayload,
+} from "@/features/dashboard/components/requirement-template-modal";
 import { useToast } from "@/providers/toast-provider";
 import type {
   EventRequirementInputType,
@@ -90,10 +94,7 @@ export function EventRequirementsPage({
   const [deadlineRule, setDeadlineRule] =
     useState<RequirementDueAnchor>("custom_date");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-
+  async function handleRequirementModalSubmit(payload: RequirementTemplateModalPayload) {
     if (!eventId) {
       showToast({
         title: "Demo events do not save requirements yet.",
@@ -103,27 +104,24 @@ export function EventRequirementsPage({
     }
 
     setIsSaving(true);
-    const formData = new FormData(form);
-    const dueDate = String(formData.get("dueDate") ?? "").trim();
-    const dueOffsetDays = String(formData.get("dueOffsetDays") ?? "").trim();
-    const reminderStartDays = Number(
-      String(formData.get("reminderDaysBeforeDue") ?? "0"),
-    );
-    const reminderCadence = String(
-      formData.get("reminderCadence") ?? "daily_until_resolved",
-    ) as RequirementReminderCadence;
-    const dueAnchor = String(
-      formData.get("dueAnchor") ?? "custom_date",
-    ) as RequirementDueAnchor;
-    const requirementPayload = buildRequirementPayload({
-      formData,
-      dueAnchor,
-      dueDate,
-      dueOffsetDays,
-      reminderCadence,
-      reminderStartDays,
-    });
-    const shouldSaveAsDefault = formData.get("saveAsDefault") === "on";
+    const requirementPayload: CreateEventRequirementInput = {
+      category: payload.category,
+      name: payload.name,
+      description: payload.description,
+      inputType: payload.inputType,
+      required: payload.required,
+      priority: payload.priority,
+      dueAnchor: payload.dueAnchor,
+      dueDate: payload.dueDate,
+      dueOffsetDays: payload.dueOffsetDays,
+      reminderEnabled: payload.reminderEnabled,
+      reminderCadence: payload.reminderCadence,
+      reminderDaysBeforeDue: payload.reminderDaysBeforeDue,
+      humanVerificationRequired: payload.humanVerificationRequired,
+      isSignedAgreement: payload.isSignedAgreement,
+      acceptedFileTypes: payload.acceptedFileTypes,
+    };
+    const shouldSaveAsDefault = Boolean(payload.saveAsDefault);
 
     try {
       const response = await fetch(`/api/v1/events/${eventId}/requirements`, {
@@ -131,7 +129,11 @@ export function EventRequirementsPage({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(editingRequirement ? { ...requirementPayload, requirementId: editingRequirement.id } : requirementPayload),
+        body: JSON.stringify(
+          editingRequirement
+            ? { ...requirementPayload, requirementId: editingRequirement.id }
+            : requirementPayload,
+        ),
       });
 
       const result = await response.json();
@@ -161,12 +163,12 @@ export function EventRequirementsPage({
       showToast({
         title: shouldSaveAsDefault
           ? "Requirement added and saved as a default template."
-          : editingRequirement ? "Requirement updated." : "Requirement added to this event.",
+          : editingRequirement
+            ? "Requirement updated."
+            : "Requirement added to this event.",
         variant: "success",
       });
 
-      form.reset();
-      setDeadlineRule("custom_date");
       setEditingRequirement(null);
       setIsRequirementModalOpen(false);
 
@@ -245,195 +247,17 @@ export function EventRequirementsPage({
         </section>
       ) : null}
 
-      {isRequirementModalOpen ? (
-        <FormModal
-          key={editingRequirement?.id ?? "new-requirement"}
-          title={editingRequirement ? "Edit requirement" : "Add requirement"}
-          description="Every new fight will inherit this event-level readiness requirement."
-          onClose={() => setIsRequirementModalOpen(false)}
-        >
-          <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Requirement name" required>
-              <input
-                name="name"
-                type="text"
-                placeholder="e.g. Medical Clearance"
-                className={inputClassName}
-                defaultValue={editingRequirement?.name ?? ""}
-                required
-              />
-            </FormField>
-
-            <FormField label="Category" required>
-              <select name="category" className={inputClassName} defaultValue={editingRequirement?.category ?? "Medical"}>
-                {requirementCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Input type" required>
-              <select name="inputType" className={inputClassName} defaultValue={editingRequirement?.inputType ?? "document"}>
-                {requirementInputTypes.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Priority" required>
-              <select name="priority" className={inputClassName} defaultValue={editingRequirement?.priority ?? "medium"}>
-                {requirementPriorities.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Deadline rule" required>
-              <select
-                name="dueAnchor"
-                className={inputClassName}
-                value={deadlineRule}
-                onChange={(event) =>
-                  setDeadlineRule(event.target.value as RequirementDueAnchor)
-                }
-              >
-                {deadlineRuleOptions.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            {deadlineRule === "custom_date" ? (
-              <FormField label="Exact deadline" required>
-                <input name="dueDate" type="date" defaultValue={editingRequirement?.dueDate?.slice(0, 10) ?? ""} className={inputClassName} required />
-              </FormField>
-            ) : (
-              <FormField label="Deadline days" required>
-                <input
-                  name="dueOffsetDays"
-                  type="number"
-                  min="0"
-                  defaultValue={editingRequirement?.dueOffsetDays ?? 3}
-                  className={inputClassName}
-                  required
-                />
-              </FormField>
-            )}
-
-            <FormField label="Reminder cadence" required>
-              <select
-                name="reminderCadence"
-                className={inputClassName}
-                defaultValue={editingRequirement?.reminderCadence ?? "daily_until_resolved"}
-              >
-                {reminderCadenceOptions.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Start daily reminders">
-              <input
-                name="reminderDaysBeforeDue"
-                type="number"
-                min="0"
-                defaultValue={editingRequirement?.reminderDaysBeforeDue?.[0] ?? 3}
-                className={inputClassName}
-              />
-              <p className="text-sm text-text-muted">
-                For daily cadence, reminders start this many days before the deadline and
-                continue until the item is resolved.
-              </p>
-            </FormField>
-          </div>
-
-          <FormField label="Description (optional)">
-            <textarea
-              name="description"
-              rows={4}
-              placeholder="What should the fighter or manager upload here?"
-              defaultValue={editingRequirement?.description ?? ""}
-              className={textareaClassName}
-            />
-          </FormField>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="Reminder email subject (optional)">
-              <input
-                name="reminderSubject"
-                type="text"
-                placeholder="e.g. Document reminder"
-                defaultValue={editingRequirement?.reminderSubject ?? ""}
-                className={inputClassName}
-              />
-            </FormField>
-
-            <FormField label="Reminder email message (optional)">
-              <textarea
-                name="reminderMessage"
-                rows={4}
-                placeholder="Share the message managers receive before the due date."
-                defaultValue={editingRequirement?.reminderMessage ?? ""}
-                className={textareaClassName}
-              />
-            </FormField>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <ToggleField
-              name="required"
-              label="Required for readiness"
-              defaultChecked={editingRequirement?.required ?? true}
-            />
-            <ToggleField
-              name="humanVerificationRequired"
-              label="Human verification"
-              defaultChecked={editingRequirement?.humanVerificationRequired ?? false}
-            />
-            <ToggleField name="isSignedAgreement" label="Signed agreement" defaultChecked={editingRequirement?.isSignedAgreement ?? false} />
-          </div>
-
-          <label className="flex items-start gap-3 rounded-[14px] border border-border-subtle bg-panel-muted px-4 py-3 text-[15px] text-text-body">
-            <input
-              name="saveAsDefault"
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-border-subtle accent-[var(--brand)]"
-            />
-            <span>
-              Also save this as a default template for future events.
-            </span>
-          </label>
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => { setEditingRequirement(null); setIsRequirementModalOpen(false); }}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-border-subtle bg-panel px-5 text-[15px] font-medium text-text-strong transition hover:bg-panel-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-brand px-5 text-[15px] font-medium text-text-inverse transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSaving ? "Saving..." : editingRequirement ? "Update requirement" : "Save requirement"}
-            </button>
-          </div>
-          </form>
-        </FormModal>
-      ) : null}
+      <RequirementTemplateModal
+        isOpen={isRequirementModalOpen}
+        mode="event-requirement"
+        editingItem={editingRequirement}
+        isSubmitting={isSaving}
+        onClose={() => {
+          setEditingRequirement(null);
+          setIsRequirementModalOpen(false);
+        }}
+        onSubmit={handleRequirementModalSubmit}
+      />
 
       <section className="rounded-[20px] border border-border-subtle bg-panel shadow-[var(--shadow-card)]">
         <div className="border-b border-border-subtle px-5 py-4">
